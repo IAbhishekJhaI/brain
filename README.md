@@ -1,4 +1,5 @@
 # brain-docs 🧠
+- **The brain of your project**
 
 **A Claude skill that gives your project a memory that survives across chat sessions.**
 
@@ -56,9 +57,14 @@ Every meaningful decision gets four lines:
 
 ## Install
 
-### Option 1: `.skill` file (Claude Code / Claude.ai)
-Download `brain-docs.skill` from the [latest release](../../releases) and
-open it in Claude — click **Save skill**.
+### Option 1: `.skill` file (recommended)
+1. Download `brain-docs.skill` from the [latest release](../../releases).
+2. In Claude, go to **Settings → Skills → Add skill** (top right) →
+   **Upload skill** → select the `brain-docs.skill` you downloaded.
+
+*(Alternatively, drop the unzipped `brain-docs/` folder straight into your
+`~/.claude/skills/` directory — on Windows, `%USERPROFILE%\.claude\skills\` —
+and Claude Code picks it up on the next session.)*
 
 ### Option 2: copy the folder (Claude Code)
 Clone this repo and copy the inner `brain-docs/` folder into your skills
@@ -66,14 +72,14 @@ directory:
 
 ```bash
 # macOS / Linux
-git clone https://github.com/YOUR_USERNAME/brain-docs.git
-cp -r brain-docs/brain-docs ~/.claude/skills/brain-docs
+git clone https://github.com/IAbhishekJhaI/brain.git
+cp -r brain/brain-docs ~/.claude/skills/brain-docs
 ```
 
 ```powershell
 # Windows (PowerShell)
-git clone https://github.com/YOUR_USERNAME/brain-docs.git
-Copy-Item -Recurse brain-docs\brain-docs "$env:USERPROFILE\.claude\skills\brain-docs"
+git clone https://github.com/IAbhishekJhaI/brain.git
+Copy-Item -Recurse brain\brain-docs "$env:USERPROFILE\.claude\skills\brain-docs"
 ```
 
 For a single project instead of all projects, copy it to
@@ -88,13 +94,13 @@ required. See **Manual setup** below.
 ### With the skill (recommended)
 
 Once installed (Option 1 or 2 above), open the project you want a brain for
-and run:
+and just type:
 
-```
-/brain-docs
-```
+> **set up a project brain for the repo**
 
-…or just say **"set up a project brain for this repo"**. The skill will:
+That's the whole trigger — no slash command. Skills are invoked by describing
+the task in plain language; Claude reads the skill's description, sees the
+match, and runs it. The skill will:
 
 1. Create `brain/` with the three seeded files
 2. Ask whether to git-ignore `brain/` (candid local notes) or commit it
@@ -102,8 +108,10 @@ and run:
 3. Add the standing rule to your `CLAUDE.md` (creating it if needed)
 4. Trace your actual codebase into `flow.md`
 
-That's it. From then on the `CLAUDE.md` rule keeps the docs current as you
-work — no need to re-invoke the skill each session.
+**You only do this once per project.** After setup, the standing rule lives in
+`CLAUDE.md` (which Claude loads every session automatically), so the docs keep
+loading, updating, and staying current across every future session on their
+own — no need to re-run anything.
 
 ### Manual setup (no skill)
 
@@ -163,7 +171,6 @@ brain-docs/            ← the skill (copy/package this folder)
 │   └── claude-md-snippet.md  ← the standing rule for your CLAUDE.md
 └── references/
     └── examples.md    ← worked examples of each format
-evals/                 ← test prompts used to validate the skill
 ```
 
 ## Provenance
