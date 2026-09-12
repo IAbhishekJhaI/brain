@@ -86,40 +86,43 @@ And the Key-files table row that goes with it:
 
 ## 3. `todo.md` entries
 
-Each item: severity tag, provenance, what/why/where, and a file ref. Note the
-🟡 item — it records something *deliberate* so a future session doesn't
-"fix" it.
+Group items under **topic** headings (not dates); each item carries its
+severity emoji as an inline tag, plus provenance, what/why/where, and a file
+ref. Note the 🟡 item — it records something *deliberate* so a future session
+doesn't "fix" it — and how items of different severities sit together under
+the topic they belong to.
 
 ```markdown
-## 🔴 Action required
+## Deploy & ops
 
-- [ ] **Set `MAPBOX_ACCESS_TOKEN` in prod env** `(session)` — routing now
+- [ ] 🔴 **Set `MAPBOX_ACCESS_TOKEN` in prod env** `(session)` — routing now
   uses Mapbox; local `.env` has the token but prod doesn't, so every plan's
   route matrix fails there. Needs Directions + Matrix APIs enabled. Verify
   with `python scripts/check_providers.py`. `integrations/routes.py`.
 
-## 🟠 Correctness / security observations
+## Routing & maps
 
-- [ ] **Rate limiter likely keys on the proxy IP, not the client.**
+- [ ] 🟡 **The route matrix uses typical traffic, not live.** `(session)` The
+  live-traffic API caps at 10 coordinates; a full day needs more, so the
+  whole-plan matrix uses the historical profile. Per-leg calls could switch
+  to live later if ETAs matter. `integrations/routes.py::get_duration_matrix`.
+
+## Security
+
+- [ ] 🟠 **Rate limiter likely keys on the proxy IP, not the client.**
   `(session)` `rate_limit.py` uses `request.client.host`, but the deploy has
   no `--proxy-headers`, so behind the proxy every request may share one IP →
   the per-IP limit becomes effectively global. Verify the deployed value;
   honor `X-Forwarded-For` if it's the proxy. `rate_limit.py:19`.
 
-## 🟡 Known limitations (by design)
+## Tech debt
 
-- [ ] **The route matrix uses typical traffic, not live.** `(session)` The
-  live-traffic API caps at 10 coordinates; a full day needs more, so the
-  whole-plan matrix uses the historical profile. Per-leg calls could switch
-  to live later if ETAs matter. `integrations/routes.py::get_duration_matrix`.
-
-## 🔵 Tech debt / cleanups
-
-- [ ] **Delete dead HS256 scaffold** `(session)` — `core/security.py` is
+- [ ] 🔵 **Delete dead HS256 scaffold** `(session)` — `core/security.py` is
   unused since the auth migration. Remove with its deps if nothing else
   needs them.
 ```
 
-When the token item above gets done, it becomes `- [x]` (or is removed), and
-if resolving it involved a real choice, that choice gets a `decisions.md`
-entry the same day.
+When the token item above gets done, it becomes `- [x]` and **moves to
+`brain/archive.md`** (under the same "Deploy & ops" heading) so `todo.md`
+stays a list of open work. And if resolving it involved a real choice, that
+choice gets a `decisions.md` entry the same day.

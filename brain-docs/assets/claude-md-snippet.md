@@ -38,10 +38,13 @@ fix its node here.
 ### `brain/todo.md` — action items, caveats, ideas
 - **Add** anything that surfaces: correctness/security risks noticed while
   reading, by-design limitations worth remembering, feature ideas, tech debt.
-- **Check off** (`[x]`) items you complete, and **remove** ones that no
-  longer apply.
-- Keep the severity tags (🔴 action · 🟠 correctness/security · 🟡 known
-  limitation · 🟢 feature · 🔵 tech-debt) and file:line references.
+- **Organize by topic, not by date** — group items under functional-area
+  headings, keep each item's severity emoji as an inline tag (🔴 action ·
+  🟠 correctness/security · 🟡 known limitation · 🟢 feature · 🔵 tech-debt) and
+  a file:line ref. **No dated session sub-headings** — the date goes in the
+  item's `(session …)` tag.
+- When you complete an item, check it off (`[x]`) and **move it to
+  `brain/archive.md`** (same topic sections) so the working list stays lean.
 
 > If a task both fixes a caveat listed here **and** embodies a decision,
 > update all three: check it off in `todo.md`, log the reasoning in

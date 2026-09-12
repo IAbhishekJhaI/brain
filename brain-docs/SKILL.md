@@ -128,9 +128,15 @@ function that appears in the doc, fix its node.
 - **Add** anything that surfaces while working: correctness or security
   risks noticed while reading (even in code you weren't asked to touch),
   by-design limitations worth remembering, feature ideas, tech debt.
-- **Check off** (`[x]`) items completed, and **remove or strike** items that
-  no longer apply — a stale todo list stops being trusted.
-- Every item carries a severity tag and, where possible, a `file:line` ref:
+- **Organize by topic, not by date.** Group items under functional-area
+  headings (e.g. "Deploy & ops", "Backend / API", "Frontend / UI", "Tech
+  debt") so the list stays scannable as it grows. A short list can stay flat;
+  split it into topic sections once it gets long. **Never** create dated
+  session sub-headings — a date belongs in the item's `(session …)` provenance
+  tag, not in a header. (Date-grouping is exactly what turns a todo file into
+  an unnavigable pile.)
+- **Severity is an inline tag, not a header.** Every item carries one of these
+  emoji (and, where possible, a `file:line` ref):
 
   - 🔴 **action required** — blocks something; must be done (deploy steps,
     migrations, missing config).
@@ -139,6 +145,11 @@ function that appears in the doc, fix its node.
   - 🟢 **feature** — improvement idea.
   - 🔵 **tech debt** — cleanup that can wait.
 
+- **When you complete an item**, check it off (`[x]`) and **move it to
+  `brain/archive.md`** — the shipped archive, mirroring the same topic
+  sections — so the working list stays lean. Create `archive.md` the first
+  time you need it (it isn't seeded at setup). Delete an item outright only
+  when it's obsolete rather than done.
 - Mark provenance when useful: `(session)` for items surfaced while working
   vs. items imported from a roadmap or handoff doc.
 

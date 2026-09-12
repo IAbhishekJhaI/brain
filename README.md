@@ -13,7 +13,7 @@ current *as it works*:
 |---|---|---|
 | `brain/decisions.md` | Dated decision log (newest first, **D/W/A/T** format) | "Why is it built this way?" |
 | `brain/flow.md` | Whole-system execution flow (call trees + `[CHANGED]` tags) | "What calls what, in what order?" |
-| `brain/todo.md` | Severity-tagged action items, caveats, ideas (🔴🟠🟡🟢🔵) | "What's known-broken, known-limited, or worth doing?" |
+| `brain/todo.md` | Topic-grouped, severity-tagged action items, caveats, ideas (🔴🟠🟡🟢🔵) | "What's known-broken, known-limited, or worth doing?" |
 
 Start a fresh session weeks later, and Claude can answer "why did we reject
 the fallback provider?" or "what's still blocking the deploy?" from the docs
@@ -159,7 +159,7 @@ The three files answer three questions:
 
 - **`brain/decisions.md`** → *"Why is it built this way?"* (dated D/W/A/T log)
 - **`brain/flow.md`** → *"What calls what, in what order?"* (call trees + `[CHANGED]` tags)
-- **`brain/todo.md`** → *"What's broken / limited / worth doing?"* (🔴🟠🟡🟢🔵 tagged)
+- **`brain/todo.md`** → *"What's broken / limited / worth doing?"* (grouped by topic, 🔴🟠🟡🟢🔵 tagged; completed items move to an optional `brain/archive.md`)
 
 ## Repo layout
 
