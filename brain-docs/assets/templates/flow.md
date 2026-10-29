@@ -15,6 +15,13 @@ API -> Service : call
 Service -> Database : SQL
 ```
 
+<!-- Optional: the viewer's swimlanes, left to right. `Name : path/prefix, …`
+     A step lands in the layer whose prefix matches its path most specifically.
+     Without this block, each top-level folder is a layer. -->
+```layers
+App : src
+```
+
 <!-- One or two sentences on the architecture, if the diagram needs it. -->
 
 ## Flow: <Primary flow name> {#primary}
@@ -30,10 +37,18 @@ Trigger: <what starts it — a user action, an endpoint, a cron, a CLI command>
        [if cond] … / [else] …                           ← branch
        ~ …                                              ← async / background
        @other-flow-id                                   ← continues in another flow
-       … # comment                                      ← ignored by the viewer -->
+       … # comment                                      ← ignored by the viewer
+     Optional trace extras (don't count toward the 40-line budget):
+       == Phase name — short subtitle                   ← starts a phase of the trace
+         | plain: one jargon-free sentence              ← under a step: shown in presentation mode
+         | passes: Artefact { handed, on }              ← what this step hands to the next
+         | fails: what really happens when it breaks    ← only for real degradation -->
 ```flow
+== Boot — read the settings, start serving
 src/server.ts :: main()  — boot the app
+  | plain: Starts the app and gets it ready for requests.
   src/config.ts :: loadConfig()  — env + defaults
+    | passes: Config { port, dbUrl }
   src/app.ts :: createApp()
     registerRoutes()  — mounts src/routes/*
   listen(PORT)

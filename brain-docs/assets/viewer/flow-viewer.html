@@ -4,166 +4,295 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Bump this when the viewer changes; the brain-docs skill re-copies older versions. -->
-<meta name="brain-docs-viewer" content="1">
-<title>Flow Viewer</title>
+<meta name="brain-docs-viewer" content="2">
+<title>Tracer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
+/* Tokens — see the Tracer handoff README §4. Dark only. Layer colours are
+   oklch(L C var(--h)); alpha always goes in the "/ a" slot, never as a hex suffix. */
 :root {
-  --bg: #f6f6f3; --panel: #ffffff; --panel2: #f0f0ec; --ink: #1c1c1e; --muted: #6a6a70;
-  --line: #e2e1dc; --hover: #f0efe9; --sel: #e3ecfd; --accent: #2f6fde; --accent-ink: #ffffff;
-  --edge: #a3a3a9; --mark: #ffe58a; --warn: #a85d00; --err: #c0362c; --info: #2f6fde;
-  --c0: #2f6fde; --c1: #c2410c; --c2: #15803d; --c3: #7c3aed; --c4: #be185d; --c5: #0e7490; --c6: #a16207; --c7: #4b5563;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #151517; --panel: #1d1d20; --panel2: #26262a; --ink: #ececee; --muted: #9a9aa2;
-    --line: #33333a; --hover: #26262b; --sel: #1f3358; --accent: #6ea0ff; --accent-ink: #0b1220;
-    --edge: #5f5f68; --mark: #6b5a12; --warn: #f0a050; --err: #ff7a6e; --info: #6ea0ff;
-    --c0: #7aa7ff; --c1: #ff9a5c; --c2: #5ccf86; --c3: #b391ff; --c4: #ff7fb6; --c5: #4fc6dd; --c6: #e5b74a; --c7: #a0a6b0;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #151517; --panel: #1d1d20; --panel2: #26262a; --ink: #ececee; --muted: #9a9aa2;
-  --line: #33333a; --hover: #26262b; --sel: #1f3358; --accent: #6ea0ff; --accent-ink: #0b1220;
-  --edge: #5f5f68; --mark: #6b5a12; --warn: #f0a050; --err: #ff7a6e; --info: #6ea0ff;
-  --c0: #7aa7ff; --c1: #ff9a5c; --c2: #5ccf86; --c3: #b391ff; --c4: #ff7fb6; --c5: #4fc6dd; --c6: #e5b74a; --c7: #a0a6b0;
+  --bg-app: #15181d; --bg-canvas: #0b0d11; --bg-chrome: #0e1116; --bg-card: #10141a; --bg-sunken: #0f1318;
+  --bg-raised: #111620; --bg-code: #08090c; --bg-hover: #141922; --bg-active: #151b24;
+  --line: #1d222a; --line-soft: #14181f; --line-card: #262c35; --line-hover: #4a5563; --line-chip: #38404b; --spine: #1f252e;
+  --ink-1: #f2f5f9; --ink-2: #e6e9ee; --ink-3: #cfd7e1; --ink-4: #c3cbd6; --ink-5: #a8b3c0; --ink-6: #96a0ae; --ink-7: #8b95a3; --ink-meta: #7f8a98;
+  --ok: oklch(0.74 0.13 150); --ok-ink: oklch(0.82 0.10 150);
+  --warn-bg: oklch(0.32 0.07 60 / 0.6); --warn-ink: oklch(0.86 0.11 70); --warn-line: oklch(0.50 0.10 60);
+  --link: oklch(0.74 0.13 250);
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Aliases for the tree / graph / files / lint pages. */
+  --bg: var(--bg-canvas); --panel: var(--bg-chrome); --panel2: var(--bg-raised); --ink: var(--ink-2); --muted: var(--ink-7);
+  --hover: var(--bg-hover); --sel: oklch(0.26 0.05 250); --accent: var(--link); --accent-ink: #0b0d11;
+  --edge: #4a5563; --mark: oklch(0.45 0.09 60); --warn: var(--warn-ink); --err: oklch(0.72 0.15 25); --info: var(--link);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { margin: 0; background: var(--bg-app); color: var(--ink-2); font: 13px/1.45 var(--sans); }
 button { font: inherit; color: inherit; }
-code, .mono { font-family: var(--mono); font-size: 12.5px; }
-code { background: var(--panel2); padding: 1px 4px; border-radius: 4px; }
-a { color: var(--accent); }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+code { background: var(--bg-raised); padding: 1px 4px; border-radius: 4px; }
+a { color: var(--link); }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
 
-.app { display: grid; grid-template-columns: 250px minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); height: 100vh; }
-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); min-width: 0; }
-header h1 { font-size: 15px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.status { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.status .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--edge); margin-right: 5px; vertical-align: 1px; }
-.status .dot.live { background: #2fae5c; }
+.app { display: grid; grid-template-columns: 204px minmax(0, 1fr) auto; grid-template-rows: 52px minmax(0, 1fr); height: 100vh; }
+
+/* ---- top bar */
+header { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--bg-chrome); border-bottom: 1px solid var(--line); min-width: 0; }
+.brand { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.brand .mark { width: 17px; height: 17px; border-radius: 5px; flex: none; background: linear-gradient(135deg, oklch(0.74 0.13 250), oklch(0.74 0.13 150)); }
+.brand b { font: 600 13.5px var(--sans); letter-spacing: -0.01em; color: var(--ink-2); }
+.brand .proj { font: 400 11px var(--mono); color: var(--ink-7); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.vdiv { width: 1px; height: 20px; background: #252b34; flex: none; }
+.ident { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ident .t { font: 600 12px var(--sans); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ident .m { font: 400 10px var(--mono); color: var(--ink-7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spacer { flex: 1; }
-.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
-.btn:hover { background: var(--hover); }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.btn.on { background: var(--sel); border-color: var(--accent); }
-.btn:focus-visible, .row:focus-visible, .nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#flowCtl { display: flex; align-items: center; gap: 10px; }
+.stepper, .seg { display: flex; align-items: center; padding: 4px; background: var(--bg-sunken); border: 1px solid #232b36; border-radius: 8px; flex: none; }
+.stepper button, .seg button { font: 600 12px var(--mono); color: var(--ink-7); padding: 4px 9px; border-radius: 5px; border: 0; background: none; cursor: pointer; }
+.seg button { font: 500 11px var(--sans); padding: 3px 9px; }
+.stepper button:hover, .seg button:hover, .seg button.on { background: #1a212b; color: var(--ink-2); }
+.stepper .lbl { font: 500 11px var(--mono); color: var(--ink-4); min-width: 74px; text-align: center; }
+.toggle { display: flex; align-items: center; gap: 8px; padding: 6px 11px; background: var(--bg-raised); border: 1px solid #232b36; border-radius: 7px; font: 500 11.5px var(--sans); color: var(--ink-4); cursor: pointer; white-space: nowrap; transition: border-color .18s; }
+.toggle:hover { border-color: var(--line-chip); }
+.toggle .short { display: none; }
+.pillsw { font: 600 9.5px var(--mono); letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; background: #1b212a; color: var(--ink-7); }
+.pillsw.on { background: var(--ok); color: #0b0d11; }
+.jump { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-sunken); border: 1px solid var(--line-card); border-radius: 7px; font: 400 11px var(--mono); color: var(--ink-7); cursor: pointer; white-space: nowrap; transition: border-color .18s; }
+.jump:hover { border-color: var(--line-chip); }
+.jump kbd { padding: 1px 5px; border-radius: 3px; background: #1b212a; color: var(--ink-7); font: 400 10px var(--mono); }
+.status { display: flex; align-items: center; gap: 6px; font: 400 10px var(--mono); color: var(--ink-7); white-space: nowrap; }
+.status .dot0 { width: 7px; height: 7px; border-radius: 50%; background: var(--edge); }
+.status .dot0.live { background: var(--ok); }
+.btn { border: 1px solid var(--line-card); background: var(--bg-sunken); border-radius: 7px; padding: 5px 10px; cursor: pointer; white-space: nowrap; font: 500 11.5px var(--sans); color: var(--ink-4); transition: border-color .18s; }
+.btn:hover { border-color: var(--line-chip); }
+.btn.primary { background: var(--ok); color: #0b0d11; border-color: var(--ok); }
+.btn.on { background: #1a212b; color: var(--ink-2); }
 #menuBtn { display: none; }
 
-aside#side { overflow: auto; background: var(--panel); border-right: 1px solid var(--line); padding: 12px 10px; }
-.search { width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font: inherit; }
-.navh { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 6px 4px; }
-.nav { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; border: 0; background: none; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
-.nav:hover { background: var(--hover); }
-.nav.active { background: var(--sel); font-weight: 600; }
-.nav .n { margin-left: auto; font-size: 11px; color: var(--muted); }
-.pill { font-size: 11px; border-radius: 9px; padding: 0 6px; margin-left: auto; }
-.pill.err { background: var(--err); color: #fff; }
-.pill.warn { background: var(--warn); color: #fff; }
-.pill.ok { color: var(--muted); }
+/* ---- left rail */
+aside#side { overflow: auto; background: var(--bg-chrome); border-right: 1px solid var(--line); }
+.rsec { position: relative; padding: 14px 12px 12px; }
+.rsec + .rsec::before { content: ""; position: absolute; top: 0; left: 12px; right: 12px; height: 1px; background: var(--line); }
+.rlab { font: 600 9.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-7); margin: 0 0 9px 2px; }
+.dot { width: 8px; height: 8px; border-radius: 2.5px; flex: none; display: inline-block; background: oklch(0.74 0.13 var(--h, 250)); box-shadow: 0 0 0 3px oklch(0.74 0.13 var(--h, 250) / 0.14); }
+.trc { display: block; width: 100%; text-align: left; padding: 9px 10px; border-radius: 8px; margin-bottom: 5px; background: var(--bg-sunken); border: 1px solid var(--line); cursor: pointer; transition: border-color .18s, background .18s; }
+.trc:hover { border-color: var(--line-chip); }
+.trc.sel { background: oklch(0.26 0.05 var(--h)); border-color: oklch(0.50 0.09 var(--h)); }
+.trc.off { opacity: .45; }
+.trc .r1 { display: flex; align-items: center; gap: 7px; }
+.trc .nm { flex: 1; min-width: 0; font: 600 11.5px/1.3 var(--sans); color: #d6dde6; overflow-wrap: anywhere; }
+.trc .ct { font: 400 10px var(--mono); color: var(--ink-7); }
+.trc .sm { margin-top: 4px; font: 400 10.5px/1.45 var(--sans); color: var(--ink-7); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.trc .sm code { font-size: 10px; padding: 0 3px; }
+.phr { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 7px 8px; border-radius: 7px; border: 0; background: none; cursor: pointer; transition: background .18s; }
+.phr:hover { background: var(--bg-hover); }
+.phr.active { background: var(--bg-active); }
+.phr .bar { width: 3px; height: 26px; border-radius: 2px; flex: none; background: oklch(0.74 0.13 var(--h)); opacity: .42; }
+.phr.active .bar { opacity: 1; }
+.phr .tx { min-width: 0; }
+.phr .nm { font: 500 11.5px var(--sans); color: var(--ink-4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.phr .rg { font: 400 9.5px var(--mono); color: var(--ink-7); }
+.lyr { display: flex; align-items: center; gap: 9px; padding: 5px 0; font: 500 11.5px var(--sans); color: var(--ink-4); }
+.lyr span { min-width: 0; overflow-wrap: anywhere; }
+.lyr .n { margin-left: auto; font: 400 10px var(--mono); color: var(--ink-7); }
+.hint { margin: 14px 0 0; font: 400 11px/1.55 var(--sans); color: var(--ink-7); }
+.nav { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 7px; cursor: pointer; font: 500 11.5px var(--sans); color: var(--ink-4); }
+.nav:hover { background: var(--bg-hover); }
+.nav.active { background: var(--bg-active); color: var(--ink-2); }
+.nav .n { margin-left: auto; font: 400 10px var(--mono); color: var(--ink-7); }
+.pill { font: 600 9.5px var(--mono); border-radius: 4px; padding: 1px 6px; margin-left: auto; }
+.pill.err { background: var(--err); color: #0b0d11; }
+.pill.warn { background: var(--warn-bg); color: var(--warn-ink); }
+.pill.ok { color: var(--ink-7); }
 
-main#main { overflow: auto; padding: 18px 22px 60px; min-width: 0; }
-main h2 { margin: 0 0 4px; font-size: 20px; }
-.sub { color: var(--muted); margin: 0 0 12px; }
+/* ---- canvas */
+main#main { overflow: auto; min-width: 0; background: var(--bg-canvas); padding: 18px 22px 60px; }
+main#main.flush { padding: 0; }
+main h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; color: var(--ink-1); }
+.sub { color: var(--ink-7); margin: 0 0 12px; }
+.trace { min-width: calc(102px + var(--L) * 180px); padding-bottom: 40px; }
+.grid { display: grid; grid-template-columns: var(--cols); column-gap: 10px; }
+.lanes { position: sticky; top: 0; z-index: 3; padding: 11px 16px; background: rgb(11 13 17 / 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); align-items: center; }
+.lanes .lab { font: 600 9.5px var(--mono); letter-spacing: 0.08em; color: var(--ink-meta); }
+.lanes .lane { display: flex; align-items: center; gap: 8px; min-width: 0; font: 600 10.5px var(--mono); letter-spacing: 0.04em; color: var(--ink-7); }
+.lanes .lane span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trig { padding: 14px 16px 2px; }
+.trig > div { grid-column: 2 / -1; font: 400 11.5px/1.5 var(--sans); color: var(--ink-6); }
+.trig .l { font: 600 9.5px var(--mono); letter-spacing: 0.08em; color: var(--ink-7); margin-right: 10px; }
+.band { padding: 18px 0 14px; border-bottom: 1px solid var(--line-soft); background: linear-gradient(90deg, oklch(0.30 0.05 var(--h) / 0.16), transparent 38%); transition: background .18s; }
+.band.active { background: linear-gradient(90deg, oklch(0.30 0.05 var(--h) / 0.4), transparent 38%); }
+.band-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; padding: 0 16px 10px; }
+.pnum { font: 600 9.5px var(--mono); letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; color: oklch(0.90 0.07 var(--h)); background: oklch(0.32 0.06 var(--h)); border: 1px solid oklch(0.48 0.09 var(--h)); }
+.pname { font: 600 12.5px var(--sans); letter-spacing: -0.01em; color: #dfe5ec; }
+.psub { font: 400 11.5px var(--sans); color: var(--ink-7); }
+.srow { padding: 0 16px; align-items: stretch; }
+.gut { grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-top: 9px; }
+.sn { font: 600 9.5px var(--mono); color: var(--ink-7); padding: 2px 6px; border-radius: 4px; background: var(--bg-sunken); border: 1px solid var(--line); transition: background .18s, border-color .18s, color .18s; }
+.srow.cur .sn { color: oklch(0.90 0.07 var(--h)); background: oklch(0.32 0.06 var(--h)); border-color: oklch(0.48 0.09 var(--h)); }
+.spine { flex: 1; width: 1px; background: var(--spine); }
+.srow.cur .spine { background: oklch(0.55 0.10 var(--h)); }
+.cell { padding: 7px 0; min-width: 0; }
+.tcard { width: 100%; padding: 11px 12px; border-radius: 9px; cursor: pointer; background: var(--bg-card); border: 1px solid var(--line-card); transition: border-color .18s, background .18s, box-shadow .18s; }
+.tcard:hover { border-color: var(--line-hover); }
+.srow.cur .tcard { border-color: oklch(0.46 0.08 var(--h)); }
+.tcard.sel, .srow.cur .tcard.sel { background: oklch(0.26 0.05 var(--h)); border-color: oklch(0.70 0.12 var(--h)); box-shadow: 0 0 0 3px oklch(0.70 0.12 var(--h) / 0.18); }
+.tcard.ref { border-style: dashed; }
+.tcard:focus-visible { outline: 2px solid oklch(0.70 0.12 var(--h)); outline-offset: 2px; }
+.ct { display: flex; gap: 7px; align-items: flex-start; }
+.tt { flex: 1; min-width: 0; overflow-wrap: anywhere; font: 600 12px/1.4 var(--mono); letter-spacing: -0.01em; color: var(--ink-2); }
+.present .tt { font: 600 13px/1.4 var(--sans); color: var(--ink-1); }
+.tag2 { flex: none; font: 500 8.5px/1.3 var(--mono); padding: 2px 5px; border-radius: 3px; letter-spacing: 0.04em; text-transform: uppercase; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag2.cond { background: var(--warn-bg); color: var(--warn-ink); border: 1px solid var(--warn-line); }
+.tag2.async { background: #1b212a; color: var(--ink-7); border: 1px solid var(--line-card); }
+.cb { margin-top: 5px; font: 400 11px/1.5 var(--sans); color: var(--ink-7); overflow-wrap: anywhere; }
+.fx { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.fxc { font: 400 10px/1.4 var(--mono); color: var(--ink-5); background: var(--bg-sunken); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+.present .cb, .present .fx { display: none; }
+.ps { display: flex; gap: 6px; align-items: flex-start; margin-top: 9px; padding-top: 8px; border-top: 1px dashed #232a34; }
+.ps .l { flex: none; font: 600 9px/1.65 var(--mono); letter-spacing: 0.06em; color: var(--ok-ink); }
+.ps .v { min-width: 0; font: 400 10px/1.5 var(--mono); color: var(--ink-7); overflow-wrap: anywhere; }
+.brow { padding: 2px 16px; }
+.bnd { grid-column: 2 / -1; display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 4px 0; cursor: pointer; font: 500 10px var(--mono); color: var(--ink-7); text-align: left; }
+.bnd::before, .bnd::after { content: ""; flex: 1; height: 1px; background: repeating-linear-gradient(90deg, #2c3440 0 4px, transparent 4px 8px); }
+.bnd:hover { color: var(--ink-4); }
+.rrow { padding: 18px 16px 0; }
+.ret { grid-column: 2 / -1; padding: 13px 15px; border-radius: 9px; border: 1px dashed #2c3440; background: #0e1217; font: 400 11.5px/1.5 var(--sans); color: var(--ink-4); }
+.ret .l { font: 600 9.5px var(--mono); letter-spacing: 0.08em; color: var(--ok-ink); margin-right: 10px; }
+.ret code { font-size: 11px; }
+
+/* ---- tree / graph / overview / files / lint */
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 12px; }
-.seg { display: inline-flex; }
-.seg .btn { border-radius: 0; }
-.seg .btn:first-child { border-radius: 7px 0 0 7px; }
-.seg .btn:last-child { border-radius: 0 7px 7px 0; margin-left: -1px; }
-.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
-.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
-
-.banner { border: 1px solid var(--err); background: color-mix(in srgb, var(--err) 10%, var(--panel)); border-radius: 8px; padding: 10px 12px; margin: 10px 0 14px; }
-.banner.warn { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--panel)); }
-
-ul.tree { list-style: none; margin: 0; padding-left: 20px; border-left: 1px dashed var(--line); margin-left: 7px; }
+.banner { border: 1px solid var(--warn-line); background: oklch(0.26 0.05 60 / 0.4); color: #dcd3c2; border-radius: 9px; padding: 10px 12px; margin: 10px 0 14px; }
+ul.tree { list-style: none; margin: 0; padding-left: 20px; border-left: 1px dashed var(--line-card); margin-left: 7px; }
 ul.tree.root { padding-left: 0; border-left: 0; margin-left: 0; }
 .row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 7px; padding: 3px 8px 3px 4px; border-radius: 6px; cursor: pointer; border-left: 3px solid var(--dc, var(--edge)); margin: 1px 0; }
-.row:hover { background: var(--hover); }
-.row.sel { background: var(--sel); }
-.row.hit { box-shadow: inset 0 0 0 1px var(--accent); }
-.tw { width: 14px; flex: none; text-align: center; color: var(--muted); user-select: none; }
+.row:hover { background: var(--bg-hover); }
+.row.sel { background: var(--bg-active); }
+.tw { width: 14px; flex: none; text-align: center; color: var(--ink-7); user-select: none; }
 .tw.leaf { opacity: .35; }
-.sym { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--dc, var(--ink)); }
-.path { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
-.note { color: var(--muted); font-size: 13px; }
+.sym { font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--dc, var(--ink-2)); }
+.path { font-family: var(--mono); font-size: 11.5px; color: var(--ink-7); overflow-wrap: anywhere; }
+.note { color: var(--ink-6); font-size: 12.5px; }
 .note::before { content: "— "; }
-.tag { font-size: 11px; border-radius: 9px; padding: 0 6px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
-.tag.cond { border-color: var(--c6); color: var(--c6); }
-.tag.async { border-color: var(--c3); color: var(--c3); }
-.tag.bnd { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-.tag.eff { background: var(--panel2); }
-.reflink { font-weight: 600; color: var(--accent); }
-.recur { color: var(--muted); font-size: 12px; padding: 2px 26px; }
+.tag { font: 500 10px var(--mono); border-radius: 4px; padding: 0 6px; border: 1px solid var(--line-card); color: var(--ink-7); white-space: nowrap; }
+.tag.cond { border-color: var(--warn-line); color: var(--warn-ink); }
+.tag.async { border-color: var(--line-chip); }
+.tag.bnd { background: var(--ink-2); color: var(--bg-canvas); border-color: var(--ink-2); }
+.tag.eff { background: var(--bg-raised); }
+.reflink { font-weight: 600; color: var(--link); }
+.recur { color: var(--ink-7); font-size: 12px; padding: 2px 26px; }
 mark { background: var(--mark); color: inherit; border-radius: 2px; }
-
-.graphbox { position: relative; height: calc(100vh - 230px); min-height: 380px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; touch-action: none; }
+.graphbox { position: relative; height: calc(100vh - 200px); min-height: 380px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-chrome); overflow: hidden; touch-action: none; }
 .graphbox svg { width: 100%; height: 100%; display: block; cursor: grab; }
 .graphbox svg.drag { cursor: grabbing; }
-.graphhint { position: absolute; right: 10px; bottom: 8px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.graphhint { position: absolute; right: 10px; bottom: 8px; font-size: 11px; color: var(--ink-7); pointer-events: none; }
 svg text { font-family: var(--mono); }
 .gnode { cursor: pointer; }
-.gnode rect.box { fill: var(--panel); stroke: var(--dc, var(--edge)); stroke-width: 1.5; }
-.gnode.sel rect.box { fill: var(--sel); stroke-width: 2.5; }
+.gnode rect.box { fill: var(--bg-card); stroke: var(--dc, var(--edge)); stroke-width: 1.5; }
+.gnode.sel rect.box { fill: var(--bg-active); stroke-width: 2.5; }
 .gnode.bnd rect.box { stroke-dasharray: 5 3; }
-.gnode.eff rect.box, .gnode.res rect.box { fill: var(--panel2); }
+.gnode.eff rect.box, .gnode.res rect.box { fill: var(--bg-raised); }
 .gnode.res rect.box { stroke-dasharray: 2 3; }
-.gnode .t1 { fill: var(--ink); font-size: 12px; font-weight: 600; }
-.gnode .t2 { fill: var(--muted); font-size: 10.5px; }
+.gnode .t1 { fill: var(--ink-2); font-size: 12px; font-weight: 600; }
+.gnode .t2 { fill: var(--ink-7); font-size: 10.5px; }
 .gedge { fill: none; stroke: var(--edge); stroke-width: 1.4; }
 .gedge.async { stroke-dasharray: 4 3; }
-.glabel { fill: var(--c6); font-size: 10.5px; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
-.cbox { fill: var(--panel); stroke: var(--accent); stroke-width: 1.5; }
-.ctext { fill: var(--ink); font-size: 12.5px; font-weight: 600; font-family: system-ui, sans-serif; }
-.clabel { fill: var(--muted); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; font-family: system-ui, sans-serif; }
-
+.glabel { fill: var(--warn-ink); font-size: 10.5px; paint-order: stroke; stroke: var(--bg-chrome); stroke-width: 4px; }
+.cbox { fill: var(--bg-card); stroke: var(--link); stroke-width: 1.5; }
+.ctext { fill: var(--ink-2); font-size: 12.5px; font-weight: 600; font-family: var(--sans); }
+.clabel { fill: var(--ink-7); font-size: 11px; paint-order: stroke; stroke: var(--bg-canvas); stroke-width: 4px; font-family: var(--sans); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
-.card { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
-.card:hover { border-color: var(--accent); }
-.card b { display: block; margin-bottom: 3px; }
-.card .meta { font-size: 12px; color: var(--muted); }
-.ov-svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 8px 0 18px; }
+.card { text-align: left; border: 1px solid var(--line-card); background: var(--bg-card); border-radius: 9px; padding: 11px 12px; cursor: pointer; transition: border-color .18s; }
+.card:hover { border-color: var(--line-hover); }
+.card b { display: block; margin-bottom: 3px; color: var(--ink-2); }
+.card .meta { font: 400 10.5px var(--mono); color: var(--ink-7); margin-top: 4px; }
+.ov-svg { width: 100%; height: auto; display: block; background: var(--bg-chrome); border: 1px solid var(--line); border-radius: 10px; margin: 8px 0 18px; }
 .prose p { margin: 6px 0; }
 .prose ul { margin: 6px 0; padding-left: 20px; }
-h3 { font-size: 15px; margin: 22px 0 8px; }
-
-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+h3 { font-size: 14px; font-weight: 600; margin: 22px 0 8px; color: var(--ink-2); }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 th, td { text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); padding: 6px 8px; }
-th { color: var(--muted); font-weight: 600; font-size: 12px; }
+th { color: var(--ink-7); font: 600 9.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 td.mono { overflow-wrap: anywhere; }
-.chip { display: inline-block; border: 1px solid var(--line); border-radius: 12px; padding: 0 8px; margin: 2px 4px 2px 0; font-size: 12px; cursor: pointer; background: var(--panel); }
-.chip:hover { border-color: var(--accent); }
-
+.chip { display: inline-block; border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; margin: 2px 4px 2px 0; font-size: 11.5px; cursor: pointer; background: var(--bg-sunken); transition: border-color .18s; }
+.chip:hover { border-color: var(--line-chip); }
 .lint { list-style: none; padding: 0; margin: 0; }
-.lint li { display: flex; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
-.lint .sev { font-size: 11px; font-weight: 700; width: 44px; flex: none; text-transform: uppercase; }
-.lint .sev.error { color: var(--err); } .lint .sev.warn { color: var(--warn); } .lint .sev.info { color: var(--info); }
-.lint .ln { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.lint li { display: flex; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--line); }
+.lint .sev { font: 600 9.5px/1.9 var(--mono); width: 44px; flex: none; text-transform: uppercase; letter-spacing: 0.06em; }
+.lint .sev.error { color: var(--err); } .lint .sev.warn { color: var(--warn-ink); } .lint .sev.info { color: var(--link); }
+.lint .ln { margin-left: auto; color: var(--ink-7); font: 400 10.5px var(--mono); white-space: nowrap; }
 
-section#details { width: 330px; overflow: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 14px 16px; }
+/* ---- detail panel */
+section#details { position: relative; width: 340px; overflow: auto; background: var(--bg-chrome); border-left: 1px solid var(--line); padding: 18px; }
 section#details[hidden] { display: none; }
-#details h3 { margin: 0 0 4px; font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; }
-#details .k { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 4px; }
-#details .close { float: right; }
+#details .close { display: none; position: absolute; top: 10px; right: 10px; }
+.nosel { margin: 40% 0 0; text-align: center; color: var(--ink-7); font-size: 12px; }
+.dmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; }
+.badge { font: 600 10px var(--mono); padding: 3px 7px; border-radius: 4px; color: oklch(0.88 0.08 var(--h)); background: oklch(0.30 0.06 var(--h)); border: 1px solid oklch(0.48 0.09 var(--h)); }
+.dmeta .sn2 { font: 400 10px var(--mono); color: var(--ink-7); }
+.dh { margin: 0; font: 600 18px/1.25 var(--mono); letter-spacing: -0.02em; color: var(--ink-1); overflow-wrap: anywhere; }
+.dpath { display: block; margin-top: 7px; padding: 0; border: 0; background: none; text-align: left; cursor: copy; font: 400 11px/1.45 var(--mono); color: var(--link); overflow-wrap: anywhere; }
+.lab { font: 600 9.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-7); }
+.plainbox { margin-top: 17px; padding: 13px; border-radius: 9px; background: var(--bg-raised); border: 1px solid #232b36; }
+.plainbox p { margin: 7px 0 0; font: 500 13px/1.55 var(--sans); color: var(--ink-3); }
+.tech { margin: 15px 0 0; font: 400 12px/1.65 var(--sans); color: var(--ink-6); overflow-wrap: anywhere; }
+.fail { margin-top: 15px; display: flex; gap: 10px; padding: 11px 12px; border-radius: 9px; background: oklch(0.26 0.05 60 / 0.4); border: 1px solid oklch(0.42 0.07 60); }
+.fail .lab { flex: none; color: var(--warn-ink); line-height: 1.9; }
+.fail p { margin: 0; font: 400 11.5px/1.55 var(--sans); color: #dcd3c2; }
+.dsec { margin-top: 18px; min-width: 0; }
+.rule { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.rule .ln { flex: 1; height: 1px; background: var(--line); }
+.rule a, .rule .aux { font: 400 10px var(--mono); color: var(--ink-meta); text-decoration: none; white-space: nowrap; }
+.rule a:hover { color: var(--ink-4); }
+.pass { padding: 10px 12px; border-radius: 8px; background: var(--bg-code); border: 1px solid var(--line); font: 400 10.5px/1.55 var(--mono); color: var(--ok-ink); overflow-wrap: anywhere; }
+pre.src { margin: 0; padding: 12px 13px; border-radius: 9px; background: var(--bg-code); border: 1px solid var(--line); font: 400 10.5px/1.75 var(--mono); color: var(--ink-5); overflow: auto; white-space: pre; }
+.cc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 18px; }
+.cc > div { min-width: 0; }
+.chip2 { display: flex; align-items: center; gap: 7px; width: 100%; padding: 7px 8px; margin-bottom: 4px; border-radius: 6px; background: var(--bg-sunken); border: 1px solid var(--line); cursor: pointer; text-align: left; font: 500 10.5px var(--mono); color: #d6dde6; transition: border-color .18s; }
+.chip2:hover { border-color: var(--line-chip); }
+.chip2 span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.none { font: 400 11px var(--sans); color: var(--ink-7); }
+.dfoot { margin-top: 18px; font: 400 10px var(--mono); color: var(--ink-meta); }
 
-.empty { max-width: 560px; margin: 8vh auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 28px; }
+/* ---- palette */
+.pal-bg { position: fixed; inset: 0; z-index: 60; display: flex; justify-content: center; align-items: flex-start; padding-top: 12vh; background: rgb(0 0 0 / 0.5); }
+.pal { width: min(560px, calc(100vw - 32px)); background: var(--bg-chrome); border: 1px solid #232b36; border-radius: 12px; box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); overflow: hidden; }
+.pal input { width: 100%; padding: 14px 16px; background: none; border: 0; border-bottom: 1px solid var(--line); color: var(--ink-2); font: 400 13px var(--sans); outline: none; }
+.pal .res { max-height: 52vh; overflow: auto; padding: 6px; }
+.pal .grp { display: flex; align-items: center; gap: 8px; padding: 10px 10px 4px; }
+.pal .it { padding: 7px 10px; border-radius: 7px; cursor: pointer; }
+.pal .it.on { background: var(--bg-active); }
+.pal .it .a { font: 600 12px var(--mono); color: var(--ink-2); overflow-wrap: anywhere; }
+.pal .it .b { font: 400 11px/1.45 var(--sans); color: var(--ink-7); overflow-wrap: anywhere; }
+.pal .foot { padding: 8px 14px; border-top: 1px solid var(--line); font: 400 10px var(--mono); color: var(--ink-7); }
+
+.empty { max-width: 560px; margin: 8vh auto; background: var(--bg-chrome); border: 1px solid var(--line); border-radius: 12px; padding: 26px 28px; }
 .empty h2 { margin-top: 0; }
 .empty .acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
-.empty ul { color: var(--muted); padding-left: 18px; }
-.dropping::after { content: "Drop flow.md to load it"; position: fixed; inset: 12px; border: 3px dashed var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--accent) 12%, transparent); display: grid; place-items: center; font-size: 20px; font-weight: 600; color: var(--accent); z-index: 50; }
+.empty ul { color: var(--ink-7); padding-left: 18px; }
+.dropping::after { content: "Drop flow.md to load it"; position: fixed; inset: 12px; border: 3px dashed var(--link); border-radius: 16px; background: oklch(0.74 0.13 250 / 0.12); display: grid; place-items: center; font-size: 20px; font-weight: 600; color: var(--link); z-index: 50; }
 
+@media (max-width: 1100px) {
+  .app { grid-template-columns: minmax(0, 1fr) auto; }
+  #menuBtn { display: inline-block; }
+  aside#side { position: fixed; top: 52px; bottom: 0; left: 0; width: min(260px, 85vw); z-index: 20; transform: translateX(-102%); transition: transform .18s; box-shadow: 0 0 30px rgb(0 0 0 / 0.5); }
+  aside#side.open { transform: none; }
+  .ident .m, .jump span, .status .tx, .brand .proj { display: none; }
+  .toggle .long { display: none; } .toggle .short { display: inline; }
+}
 @media (max-width: 820px) {
   .app { grid-template-columns: minmax(0, 1fr); }
-  #menuBtn { display: inline-block; }
-  aside#side { position: fixed; top: 49px; bottom: 0; left: 0; width: min(290px, 85vw); z-index: 20; transform: translateX(-102%); transition: transform .18s; box-shadow: 0 0 30px rgba(0,0,0,.2); }
-  aside#side.open { transform: none; }
+  header { gap: 8px; padding: 0 10px; overflow-x: auto; scrollbar-width: none; }
+  .brand b, .vdiv, .ident, #openBtn { display: none; }
   main#main { padding: 14px 16px 60px; }
+  section#details { display: none; }
+  section#details.sheet-open { display: block; position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-height: 60vh; z-index: 30; border-left: 0; border-top: 1px solid var(--line); box-shadow: 0 -8px 30px rgb(0 0 0 / 0.4); }
+  #details .close { display: inline-block; }
   ul.tree { padding-left: 10px; margin-left: 4px; }
-  section#details { position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-height: 55vh; z-index: 30; border-left: 0; border-top: 1px solid var(--line); box-shadow: 0 -8px 30px rgba(0,0,0,.18); }
-  .status { display: none; }
   .graphbox { height: 60vh; }
 }
 </style>
@@ -172,30 +301,39 @@ section#details[hidden] { display: none; }
 <div class="app">
   <header>
     <button class="btn" id="menuBtn" aria-label="Toggle navigation">☰</button>
-    <h1 id="docTitle">Flow Viewer</h1>
-    <span class="status" id="status"></span>
+    <div class="brand"><i class="mark"></i><b>Tracer</b><span class="proj" id="proj"></span></div>
+    <span class="vdiv"></span>
+    <div class="ident"><div class="t" id="docTitle">Flow Viewer</div><div class="m" id="docMeta"></div></div>
     <span class="spacer"></span>
+    <div id="flowCtl"></div>
+    <button class="jump" id="jumpBtn" title="Jump to a function, file or description"><span>Jump to…</span><kbd>⌘K</kbd></button>
+    <span class="status" id="status"></span>
     <button class="btn" id="openBtn" title="Open flow.md">Open</button>
     <button class="btn" id="reloadBtn" title="Reload flow.md" hidden>Reload</button>
-    <button class="btn" id="themeBtn" title="Theme">◐</button>
     <input type="file" id="fileInput" accept=".md,text/markdown,text/plain" hidden>
   </header>
   <aside id="side" aria-label="Navigation"></aside>
   <main id="main"></main>
-  <section id="details" hidden aria-label="Node details"></section>
+  <section id="details" hidden aria-label="Step details"></section>
 </div>
 <script>
 (() => {
 'use strict';
 
 // ---------------------------------------------------------------- constants
-const LIMITS = { note: 80, flowLines: 40, keyPaths: 3, keyRowChars: 160 };
+const LIMITS = { note: 80, flowLines: 40, keyPaths: 3, keyRowChars: 160, plain: 120, passes: 80, fails: 160 };
+const ATTRS = ['plain', 'passes', 'fails'];
 const HISTORY_RE = /\[(?:CHANGED|NEW|REMOVED|DEPRECATED)\b[^\]]*\]|\b(?:previously|no longer|supersede[sd]?|formerly|used to|was|were|old|deleted|removed)\b|\b20\d\d-\d\d-\d\d\b/i;
 const LEGACY_RE = /\[(?:CHANGED|NEW)\b[^\]]*\]/g;
+const IDENT_RE = /::|\w\(\)|`|\b[a-z][a-z0-9]*_[a-z0-9_]+\b/;
 const EFFECTS = ['db', 'ext', 'cache', 'queue', 'fs', 'env', 'log'];
+// Layer hues in lane order: Browser-blue, violet, green, amber, clay, then extras.
+const HUES = [250, 300, 150, 60, 20, 200, 340, 100, 280, 40];
+const KIND = { call: 'call', boundary: 'boundary', effect: 'side effect', result: 'result', ref: 'flow reference' };
 const NS = 'http://www.w3.org/2000/svg';
 const POLL_MS = 2000;
 const IDB_KEY = 'handle:' + location.pathname;
+const SERVED = /^https?:$/.test(location.protocol);
 
 // ---------------------------------------------------------------- dom helpers
 const $ = (q) => document.querySelector(q);
@@ -210,7 +348,7 @@ function setAttrs(el, a) {
 }
 function append(el, kids) {
   for (const k of kids.flat(Infinity)) {
-    if (k == null || k === false) continue;
+    if (k == null || k === false || k === '') continue;
     el.append(k instanceof Node ? k : String(k));
   }
 }
@@ -220,6 +358,8 @@ function walk(nodes, fn) { for (const n of nodes) { fn(n); walk(n.children, fn);
 function slug(t) { return t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'flow'; }
 function basename(p) { return p.split('/').pop(); }
 function topDir(p) { return p && p.includes('/') ? p.split('/')[0] : (p ? '(root)' : ''); }
+const pad2 = (i) => String(i).padStart(2, '0');
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 // Tiny inline markdown: `code` and **bold** only.
 function inline(text) {
@@ -259,7 +399,7 @@ function parseNodeLine(body) {
   let note = '';
   const nm = body.match(/\s+(?:—|–|--)\s+(.*)$/);
   if (nm) { note = nm[1].trim(); body = body.slice(0, nm.index).trim(); }
-  const n = { async, cond, note, kind: 'call', path: '', symbol: '', label: '', children: [] };
+  const n = { async, cond, note, kind: 'call', path: '', symbol: '', label: '', children: [], attrs: {} };
   if (body.startsWith('@')) { n.kind = 'ref'; n.target = body.slice(1).trim(); n.label = n.target; }
   else if ((m = body.match(/^=>\s*(.*)$/))) { n.kind = 'boundary'; n.label = m[1].trim(); }
   else if ((m = body.match(/^(?:→|->)\s*(.*)$/))) { n.kind = 'result'; n.label = m[1].trim(); }
@@ -271,7 +411,7 @@ function parseNodeLine(body) {
 
 function parseDoc(text) {
   const lines = text.split(/\r?\n/);
-  const doc = { title: '', intro: [], overview: null, flows: [], keyFiles: [], other: [], lint: [], lineCount: lines.length, raw: text, legacy: false };
+  const doc = { title: '', intro: [], overview: null, flows: [], keyFiles: [], other: [], layers: [], lint: [], lineCount: lines.length, raw: text, legacy: false };
   const lint = (sev, msg, line) => doc.lint.push({ sev, msg, line });
   let sec = null, fence = null;
 
@@ -283,6 +423,9 @@ function parseDoc(text) {
     } else if (f.lang === 'components') {
       if (!sec || sec.type !== 'overview') { lint('warn', 'A ```components block belongs under "## Overview"', f.start); return; }
       parseComponents(f, sec);
+    } else if (f.lang === 'layers') {
+      if (sec && sec.type === 'flow') { lint('warn', 'A ```layers block belongs under "## Overview"', f.start); return; }
+      parseLayers(f);
     } else if (sec && (sec.type === 'overview' || sec.type === 'other')) {
       sec.code.push(f.lines.map(l => l.text).join('\n'));
     }
@@ -291,17 +434,46 @@ function parseDoc(text) {
   const parseFlowBlock = (f, flow) => {
     flow.hasBlock = true;
     const stack = [];
+    let prev = null, pendingPhase = null;
     for (const { text: t, no } of f.lines) {
       const raw = t.replace(/\t/g, '  ');
       let body = raw.trim();
       if (!body || body.startsWith('#')) continue;
       body = body.replace(/\s+#\s.*$/, '').trim();
       if (!body) continue;
+
+      // "| key: value" — an attribute of the step above. Doesn't count toward the budget.
+      if (body.startsWith('|')) {
+        const am = body.match(/^\|\s*([\w-]+)\s*:\s*(.*)$/);
+        if (!am) { lint('warn', 'Malformed attribute — use "| plain: …", "| passes: …" or "| fails: …"', no); continue; }
+        const key = am[1].toLowerCase(), val = am[2].trim();
+        if (!ATTRS.includes(key)) { lint('warn', `Unknown attribute "${key}" — use plain, passes or fails`, no); continue; }
+        if (!prev) { lint('warn', `"| ${key}:" has no step above it`, no); continue; }
+        if (prev.attrs[key]) lint('info', `Second "${key}" for the same step — joined to the first`, no);
+        prev.attrs[key] = prev.attrs[key] ? prev.attrs[key] + ' ' + val : val;
+        if (val.length > LIMITS[key]) lint('warn', `"${key}" is ${val.length} chars (limit ${LIMITS[key]})`, no);
+        if (HISTORY_RE.test(val)) lint('warn', `History/changelog wording: "${val.match(HISTORY_RE)[0]}" — flow.md describes the current code only`, no);
+        if (key === 'plain' && IDENT_RE.test(val)) lint('info', `Plain English contains code ("${val.match(IDENT_RE)[0]}") — say it without identifiers`, no);
+        continue;
+      }
+      // "== Name — subtitle" — starts a phase. Doesn't count toward the budget.
+      if (/^==(?!>)/.test(body)) {
+        const ph = body.replace(/^=+\s*/, '').replace(/\s*=+$/, '');
+        const pm = ph.match(/^(.*?)\s+(?:—|–|--)\s+(.*)$/);
+        const name = (pm ? pm[1] : ph).trim();
+        if (!name) { lint('warn', 'Phase line has no name — use "== Name — subtitle"', no); continue; }
+        if (pendingPhase) lint('info', `Phase "${pendingPhase.name}" has no steps`, pendingPhase.line);
+        if (HISTORY_RE.test(ph)) lint('warn', `History/changelog wording in a phase: "${ph.match(HISTORY_RE)[0]}"`, no);
+        pendingPhase = { name, sub: pm ? pm[2].trim() : '', line: no };
+        continue;
+      }
+
       flow.blockLines++;
       const indent = raw.match(/^ */)[0].length;
       if (indent % 2) lint('warn', 'Indent is not a multiple of 2 spaces', no);
       const n = parseNodeLine(body);
       n.line = no; n.raw = body;
+      if (pendingPhase) { n.phaseStart = pendingPhase; pendingPhase = null; }
       while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
       const top = stack[stack.length - 1];
       if (top && indent - top.indent > 2) lint('info', 'Indent jumps more than one level', no);
@@ -313,9 +485,11 @@ function parseDoc(text) {
       }
       (n.parent ? n.parent.children : flow.roots).push(n);
       stack.push({ indent, node: n });
+      prev = n;
       if (n.note.length > LIMITS.note) lint('warn', `Note is ${n.note.length} chars (limit ${LIMITS.note}) — keep notes to what the hop does`, no);
       if (HISTORY_RE.test(body)) lint('warn', `History/changelog wording: "${body.match(HISTORY_RE)[0]}" — flow.md describes the current code only`, no);
     }
+    if (pendingPhase) lint('info', `Phase "${pendingPhase.name}" has no steps`, pendingPhase.line);
   };
 
   const parseComponents = (f, ov) => {
@@ -329,6 +503,20 @@ function parseDoc(text) {
       if (lm) { b = lm[1]; label = lm[2]; }
       if (!m[1].trim() || !b.trim()) { lint('warn', 'Malformed components edge', no); continue; }
       ov.edges.push({ a: m[1].trim(), b: b.trim(), label: label.trim(), both: m[2] === '<->' });
+    }
+  };
+
+  const parseLayers = (f) => {
+    for (const { text: t, no } of f.lines) {
+      const l = t.replace(/\s+#\s.*$/, '').trim();
+      if (!l || l.startsWith('#')) continue;
+      const m = l.match(/^(.*?)\s*:\s*(.*)$/);
+      const name = (m ? m[1] : l).trim();
+      if (!name) { lint('warn', 'Malformed layers line — use "Name : path/prefix, other/prefix"', no); continue; }
+      const prefixes = m ? m[2].split(',').map(p => p.trim().replace(/^`|`$/g, '').replace(/^\.\//, '').replace(/\/+$/, '')).filter(Boolean) : [];
+      if (doc.layers.some(x => x.name === name)) lint('warn', `Duplicate layer "${name}"`, no);
+      if (!prefixes.length) lint('warn', `Layer "${name}" has no path prefixes, so no step can land in it`, no);
+      doc.layers.push({ name, prefixes, line: no });
     }
   };
 
@@ -412,6 +600,18 @@ function parseDoc(text) {
     });
   }
 
+  // layers, steps, phases
+  doc.explicitLayers = doc.layers.length > 0;
+  if (!doc.explicitLayers) for (const d of doc.dirs) doc.layers.push({ name: d === '(root)' ? '(root)' : d + '/', prefixes: [d === '(root)' ? '' : d], auto: true });
+  if (!doc.layers.length) doc.layers.push({ name: 'Code', prefixes: [], auto: true, catchAll: true });
+  doc.layers.forEach((l, i) => { l.hue = HUES[i % HUES.length]; l.idx = i; });
+  for (const f of doc.flows) buildSteps(doc, f, lint);
+  if (doc.explicitLayers) {
+    const loose = doc.flows.flatMap(f => f.steps).filter(st => st.layer === doc.otherLayer);
+    if (loose.length) lint('info', `${loose.length} step(s) match no layer (e.g. ${loose[0].path || loose[0].symbol}) — add their path to the \`\`\`layers block`, loose[0].line);
+    for (const l of doc.layers) if (l !== doc.otherLayer && l.line && !doc.flows.some(f => f.steps.some(st => st.layer === l))) lint('info', `Layer "${l.name}" has no steps`, l.line);
+  }
+
   // legacy detection
   let legacyCount = 0, legacyLine = 0;
   for (const c of content) {
@@ -432,14 +632,83 @@ function parseDoc(text) {
   return doc;
 }
 
+// Longest matching path prefix wins; unmatched paths go to a trailing "Other" lane.
+function layerOf(doc, path) {
+  let best = null, bestLen = -1;
+  for (const l of doc.layers) {
+    if (l.catchAll && bestLen < 0) best = l;
+    for (const p of l.prefixes) {
+      const ok = p === '' ? (l.auto && !path.includes('/')) : (path === p || path.startsWith(p + '/'));
+      if (ok && p.length > bestLen) { best = l; bestLen = p.length; }
+    }
+  }
+  if (best) return best;
+  if (!doc.otherLayer) {
+    doc.otherLayer = { name: 'Other', prefixes: [], auto: true, idx: doc.layers.length, hue: HUES[doc.layers.length % HUES.length] };
+    doc.layers.push(doc.otherLayer);
+  }
+  return doc.otherLayer;
+}
+
+// A flow's trace = its call and @ref lines in source order. Effects and results
+// attach to the nearest step above them; a boundary attaches to the next step.
+function buildSteps(doc, f, lint) {
+  f.steps = []; f.phases = [];
+  const explicit = (function has(ns) { return ns.some(n => n.phaseStart || has(n.children)); })(f.roots);
+  let cur = null, pendingBnd = null;
+  const visit = (n, anc) => {
+    if (n.phaseStart) { cur = { name: n.phaseStart.name, sub: n.phaseStart.sub, steps: [] }; f.phases.push(cur); }
+    n.stepParent = anc;
+    let here = anc;
+    if (n.kind === 'call' || n.kind === 'ref') {
+      n.step = f.steps.length; n.effects = []; n.results = []; n.subSteps = [];
+      n.layer = (n.kind === 'call' && n.path ? layerOf(doc, n.path) : null) || (anc ? anc.layer : null) || doc.layers[0];
+      n.boundary = pendingBnd; pendingBnd = null;
+      if (anc) anc.subSteps.push(n);
+      f.steps.push(n);
+      if (explicit) {
+        if (!cur) { cur = { name: 'Start', sub: '', steps: [] }; f.phases.push(cur); lint('info', `Flow "${f.name}" has steps before its first "==" phase line`, n.line); }
+      } else if (!cur || cur.layer !== n.layer) { cur = { name: n.layer.name, sub: '', layer: n.layer, steps: [] }; f.phases.push(cur); }
+      cur.steps.push(n); n.phase = cur;
+      here = n;
+    } else if (n.kind === 'boundary') pendingBnd = n;
+    else if (n.kind === 'effect' && anc) anc.effects.push(n);
+    else if (n.kind === 'result' && anc) anc.results.push(n);
+    for (const c of n.children) visit(c, here);
+  };
+  for (const r of f.roots) visit(r, null);
+  f.phases = f.phases.filter(p => p.steps.length);
+  f.phases.forEach((p, i) => { p.idx = i; p.hue = p.steps[0].layer.hue; });
+  const last = f.roots[f.roots.length - 1];
+  const tail = last && (last.kind === 'result' ? last : last.children[last.children.length - 1]);
+  f.returnNode = tail && tail.kind === 'result' && tail.depth <= 1 ? tail : null;
+  for (const st of f.steps) {
+    const r = st.results.find(x => x !== f.returnNode && !x.cond);
+    st.passes = st.attrs.passes || (r ? r.label : '');
+  }
+  f.lanes = doc.layers.filter(l => f.steps.some(st => st.layer === l));
+}
+
 // ---------------------------------------------------------------- state
 const S = {
-  doc: null, src: null, route: { view: 'overview', id: null }, q: '',
-  collapsed: new Set(), refOpen: new Set(), sel: null, mode: 'tree', views: {}, pendingHandle: null,
+  doc: null, src: null, route: { view: 'flow', id: null }, want: null,
+  collapsed: new Set(), refOpen: new Set(), sel: null, mode: 'trace', views: {}, pendingHandle: null,
+  curFlow: null, cursor: 0, present: false, sheet: false, scroll: null, focus: null, pal: null,
 };
-function dirVar(path) {
-  const i = S.doc ? S.doc.dirs.indexOf(topDir(path)) : -1;
-  return i < 0 ? 'var(--edge)' : `var(--c${i % 8})`;
+function curFlow() {
+  const d = S.doc;
+  if (!d || S.route.view !== 'flow') return null;
+  if (S.route.id) return d.flowById.get(S.route.id) || null;
+  return d.legacy ? null : (d.flows.find(f => f.steps.length) || d.flows[0] || null);
+}
+const traceOn = () => !!curFlow() && S.mode === 'trace';
+const stepOf = (n) => (n.step != null ? n : n.stepParent);
+const stepIndexOf = (n) => { const st = stepOf(n); return st ? st.step : 0; };
+function hueOf(n) { const st = n && stepOf(n); return st ? st.layer.hue : HUES[0]; }
+function dirVar(path) { return S.doc && path ? `oklch(0.74 0.13 ${layerOf(S.doc, path).hue})` : 'var(--edge)'; }
+function presentTitle(st) {
+  if (st.kind === 'ref') return 'Continues in “' + (st.targetFlow ? st.targetFlow.name : st.target) + '”';
+  return (st.attrs.plain || st.note || st.symbol).replace(/\.$/, '');
 }
 
 // ---------------------------------------------------------------- loading
@@ -454,6 +723,7 @@ function setText(text, src) {
   S.src.text = text;
   S.src.at = new Date();
   S.doc = parseDoc(text);
+  SRC.clear();
   if (S.sel) S.sel = S.doc.nodes.get(S.sel.id) || null;
   render();
 }
@@ -517,39 +787,86 @@ document.addEventListener('drop', async (e) => {
   if (file) setText(await file.text(), { kind: 'static', label: file.name + ' (no live reload)', live: false });
 });
 
-// ---------------------------------------------------------------- theme
-const THEMES = ['auto', 'light', 'dark'];
-let theme = 'auto';
-try { theme = localStorage.getItem('brain-docs-viewer:theme') || 'auto'; } catch (e) { /* ignore */ }
-function applyTheme() {
-  if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.setAttribute('data-theme', theme);
-  $('#themeBtn').title = 'Theme: ' + theme;
+// Source excerpts: only when the page is served and ../<path> resolves (viewer
+// served from the project root as /brain/flow-viewer.html).
+const SRC = new Map();
+function srcUrl(path) { return new URL('../' + path.replace(/^\.?\//, ''), location.href).href; }
+function loadSource(path) {
+  if (!SERVED) return Promise.resolve(null);
+  if (!SRC.has(path)) {
+    SRC.set(path, fetch(srcUrl(path), { cache: 'no-store' }).then(r => {
+      if (!r.ok) return null;
+      if (/text\/html/.test(r.headers.get('content-type') || '') && !/\.html?$/i.test(path)) return null;
+      return r.text();
+    }).catch(() => null));
+  }
+  return SRC.get(path);
 }
-$('#themeBtn').onclick = () => {
-  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
-  try { localStorage.setItem('brain-docs-viewer:theme', theme); } catch (e) { /* ignore */ }
-  applyTheme(); if (S.route.view === 'flow' && S.mode === 'graph') render();
-};
+function excerpt(text, symbol) {
+  const lines = text.split(/\r?\n/);
+  const name = (symbol.replace(/\(.*$/s, '').split(/[.:#\s·]+/).filter(Boolean).pop() || '').replace(/\W/g, '');
+  let at = -1;
+  if (name) {
+    const res = [
+      new RegExp(`\\b(?:def|class|function|interface|type|enum|struct|trait|func|fn|module)\\s+${name}\\b`),
+      new RegExp(`\\b(?:const|let|var)\\s+${name}\\s*[=:]`),
+      new RegExp(`^\\s*(?:(?:export|public|private|protected|static|async|override|default)\\s+)*${name}\\s*[(=:]`),
+      new RegExp(`\\b${name}\\b`),
+    ];
+    for (const re of res) { at = lines.findIndex(l => re.test(l)); if (at >= 0) break; }
+  }
+  const start = Math.max(0, at);
+  const chunk = lines.slice(start, start + 14);
+  while (chunk.length && !chunk[chunk.length - 1].trim()) chunk.pop();
+  const ind = Math.min(...chunk.filter(l => l.trim()).map(l => l.match(/^\s*/)[0].length), 99);
+  return { line: start + 1, found: at >= 0, text: chunk.map(l => l.slice(ind)).join('\n') };
+}
 
 // ---------------------------------------------------------------- routing
 function parseHash() {
-  const m = location.hash.match(/^#\/(overview|files|lint|flow)(?:\/(.+))?$/);
-  S.route = m ? { view: m[1], id: m[2] ? decodeURIComponent(m[2]) : null } : { view: 'overview', id: null };
+  const m = location.hash.match(/^#\/(overview|files|lint|flow)(?:\/([^?]*))?(?:\?(.*))?$/);
+  S.route = m ? { view: m[1], id: m[2] ? decodeURIComponent(m[2]) : null } : { view: 'flow', id: null };
+  const q = new URLSearchParams((m && m[3]) || '');
+  if (q.has('present')) S.present = q.get('present') === '1';
+  S.want = q.has('step') || q.has('node') ? { step: q.has('step') ? parseInt(q.get('step'), 10) - 1 : null, node: q.get('node') } : null;
 }
-function go(view, id) {
-  const hash = '#/' + view + (id ? '/' + encodeURIComponent(id) : '');
+function hashFor(view, id, p) {
+  const q = new URLSearchParams();
+  if (p && p.step != null) q.set('step', p.step + 1);
+  if (p && p.node) q.set('node', p.node);
+  if (view === 'flow' && S.present) q.set('present', '1');
+  const qs = q.toString();
+  return '#/' + view + (id ? '/' + encodeURIComponent(id) : '') + (qs ? '?' + qs : '');
+}
+function go(view, id, p) {
+  const hash = hashFor(view, id, p);
   $('#side').classList.remove('open');
-  if (location.hash === hash) render(); else location.hash = hash;
+  if (location.hash === hash) { parseHash(); render(); } else location.hash = hash;
 }
 window.addEventListener('hashchange', () => { parseHash(); render(); });
+function writeHash() {
+  const f = curFlow(); if (!f) return;
+  const hash = hashFor('flow', f.id, { step: S.cursor, node: S.sel ? S.sel.id : null });
+  if (location.hash !== hash) history.replaceState(null, '', hash);
+}
+// Reconcile cursor / selection with the flow on screen and any ?step=&node= in the URL.
+function syncFlow(f) {
+  const w = S.want; S.want = null;
+  if (S.curFlow !== f.id || w) {
+    S.curFlow = f.id; S.sheet = false;
+    const wn = w && w.node ? S.doc.nodes.get(w.node) : null;
+    S.sel = wn && wn.flow === f ? wn : null;
+    S.cursor = w && w.step != null && !isNaN(w.step) ? w.step : (S.sel ? stepIndexOf(S.sel) : 0);
+    S.scroll = 'auto';
+  }
+  S.cursor = clamp(S.cursor, 0, Math.max(0, f.steps.length - 1));
+  if (S.sel && (S.sel.flow !== f || S.sel === f.steps[S.cursor])) S.sel = null;
+}
 
 function goToNode(n) {
-  S.q = '';
   for (let a = n.parent; a; a = a.parent) S.collapsed.delete(a.id);
-  S.sel = n;
-  S.focus = n; // consumed by render() once the target flow is on screen
-  go('flow', n.flow.id);
+  S.focus = n; S.sheet = true;
+  go('flow', n.flow.id, { step: stepIndexOf(n), node: n.step != null ? null : n.id });
 }
 function applyFocus() {
   const n = S.focus; S.focus = null;
@@ -559,31 +876,103 @@ function applyFocus() {
   });
 }
 
+// ---------------------------------------------------------------- navigation
+function setCursor(i) {
+  const f = curFlow(); if (!f || !f.steps.length) return;
+  S.cursor = clamp(i, 0, f.steps.length - 1); S.sel = null;
+  update('smooth');
+}
+const moveCursor = (d) => setCursor(S.cursor + d);
+function jumpPhase(dir) {
+  const f = curFlow(), st = f && f.steps[S.cursor]; if (!st) return;
+  const p = f.phases[clamp(st.phase.idx + dir, 0, f.phases.length - 1)];
+  setCursor(p.steps[0].step);
+}
+function pickStep(st) { S.cursor = st.step; S.sel = null; S.sheet = true; update(null); }
+function pickNode(n) {
+  if (n.flow !== curFlow()) { goToNode(n); return; }
+  S.sel = n.step != null && n.step === S.cursor ? null : n; S.sheet = true;
+  update(null);
+}
+function togglePresent() {
+  const main = $('#main'), el = main.querySelector(`.srow[data-step="${S.cursor}"]`);
+  const before = el ? el.getBoundingClientRect().top : null;
+  S.present = !S.present; render();
+  const el2 = main.querySelector(`.srow[data-step="${S.cursor}"]`);
+  if (before != null && el2) main.scrollTop += el2.getBoundingClientRect().top - before;
+}
+// Cursor / selection changes repaint in place so the 180ms transitions run.
+function update(scroll) {
+  if (!traceOn()) { render(); return; }
+  renderHeader(); renderSide(); paintTrace(); renderDetails(); writeHash();
+  if (scroll) scrollToStep(scroll);
+}
+function scrollToStep(behavior) {
+  const main = $('#main'), row = main.querySelector(`.srow[data-step="${S.cursor}"]`); if (!row) return;
+  const card = row.querySelector('.tcard') || row;
+  const mr = main.getBoundingClientRect(), cr = card.getBoundingClientRect();
+  const top = main.scrollTop + cr.top - mr.top - (main.clientHeight - cr.height) / 2;
+  let left = main.scrollLeft;
+  if (cr.left < mr.left + 70 || cr.right > mr.right) left = main.scrollLeft + cr.left - mr.left - (main.clientWidth - cr.width) / 2;
+  main.scrollTo({ top: Math.max(0, top), left: Math.max(0, left), behavior });
+}
+
 // ---------------------------------------------------------------- render
 function render() {
-  const d = S.doc;
-  $('#docTitle').textContent = d ? (d.title || 'Flow') : 'Flow Viewer';
-  document.title = d && d.title ? d.title.replace(/^Execution Flow\s*[—-]\s*/i, '') + ' · Flow' : 'Flow Viewer';
-  const st = $('#status'); st.replaceChildren();
-  if (S.src) st.append(h('span', { class: 'dot' + (S.src.live ? ' live' : '') }), S.src.label + (S.src.live ? ' · live' : '') + ' · ' + S.src.at.toLocaleTimeString());
-  $('#reloadBtn').hidden = !S.src || S.src.kind === 'static';
+  const d = S.doc, f = curFlow();
+  if (f) syncFlow(f);
+  renderHeader();
   renderSide();
   const main = $('#main'); main.replaceChildren();
-  if (!d) { main.append(renderEmpty()); renderDetails(); return; }
-  if (S.q.trim()) main.append(renderSearch());
-  else if (S.route.view === 'flow' && d.flowById.has(S.route.id)) main.append(renderFlow(d.flowById.get(S.route.id)));
+  const trace = !!f && S.mode === 'trace';
+  main.classList.toggle('flush', trace);
+  if (!d) main.append(renderEmpty());
+  else if (f) main.append(trace ? renderTrace(f) : renderFlow(f));
   else if (S.route.view === 'files') main.append(renderFiles());
   else if (S.route.view === 'lint') main.append(renderLint());
   else main.append(renderOverview());
+  if (trace) paintTrace();
   renderDetails();
-  if (S.focus && S.route.view === 'flow' && S.route.id === S.focus.flow.id && !S.q) applyFocus();
+  if (f) writeHash();
+  if (trace && S.scroll) { const b = S.scroll; S.scroll = null; S.focus = null; requestAnimationFrame(() => scrollToStep(b)); }
+  else if (S.focus && f && !trace && S.focus.flow === f) applyFocus();
+}
+
+function renderHeader() {
+  const d = S.doc, f = curFlow();
+  const proj = d && d.title ? d.title.replace(/^Execution Flow\s*[—–-]\s*/i, '') : '';
+  $('#proj').textContent = proj;
+  document.title = d ? (f ? f.name + ' · ' : '') + (proj || 'Flow') + ' · Tracer' : 'Tracer';
+  $('#docTitle').textContent = !d ? 'Flow Viewer' : f ? f.name : ({ files: 'Files', lint: 'Lint' }[S.route.view] || 'Overview');
+  $('#docMeta').textContent = !d ? 'no flow.md loaded'
+    : f ? ['#' + f.id, f.steps.length + ' steps', f.lanes.length + ' layers', f.phases.length + ' phases'].join(' · ')
+    : `${d.flows.length} flows · ${d.files.size} files · ${d.layers.length} layers`;
+  const st = $('#status'); st.replaceChildren();
+  if (S.src) {
+    st.title = S.src.label + (S.src.live ? ' · live' : '') + ' · ' + S.src.at.toLocaleTimeString();
+    st.append(h('span', { class: 'dot0' + (S.src.live ? ' live' : '') }), h('span', { class: 'tx' }, S.src.live ? 'live' : 'static'));
+  }
+  $('#reloadBtn').hidden = !S.src || S.src.kind === 'static';
+  $('#jumpBtn').hidden = !d;
+  const ctl = $('#flowCtl'); ctl.replaceChildren();
+  if (!f) return;
+  ctl.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'View' }, ['trace', 'tree', 'graph'].map(m =>
+    h('button', { class: S.mode === m ? 'on' : null, 'aria-pressed': String(S.mode === m), onclick: () => { S.mode = m; S.scroll = m === 'trace' ? 'auto' : null; render(); if (m !== 'trace') $('#main').scrollTo(0, 0); } }, m[0].toUpperCase() + m.slice(1)))));
+  if (S.mode !== 'trace' || !f.steps.length) return;
+  ctl.append(
+    h('div', { class: 'stepper' },
+      h('button', { onclick: () => moveCursor(-1), title: 'Previous step (← or k)', 'aria-label': 'Previous step' }, '◀'),
+      h('span', { class: 'lbl' }, `Step ${S.cursor + 1} / ${f.steps.length}`),
+      h('button', { onclick: () => moveCursor(1), title: 'Next step (→ or j)', 'aria-label': 'Next step' }, '▶')),
+    h('button', { class: 'toggle', onclick: togglePresent, title: 'Explain for non-engineers (p)', 'aria-pressed': String(S.present) },
+      h('span', { class: 'long' }, 'Presentation mode'), h('span', { class: 'short' }, 'Present'),
+      h('span', { class: 'pillsw' + (S.present ? ' on' : '') }, S.present ? 'ON' : 'OFF')));
 }
 
 function renderEmpty() {
-  const served = /^https?:$/.test(location.protocol);
   return h('div', { class: 'empty' },
     h('h2', null, 'Load your flow.md'),
-    h('p', null, 'This viewer renders ', h('code', null, 'brain/flow.md'), ' — the snapshot of how your code executes today.'),
+    h('p', null, 'This viewer renders ', h('code', null, 'brain/flow.md'), ' — the snapshot of how your code executes today — as a step-by-step trace.'),
     h('div', { class: 'acts' },
       S.pendingHandle && h('button', { class: 'btn primary', onclick: reconnect }, 'Reconnect ' + S.pendingHandle.name),
       h('button', { class: 'btn' + (S.pendingHandle ? '' : ' primary'), onclick: openFile }, 'Open flow.md…')),
@@ -592,29 +981,95 @@ function renderEmpty() {
       window.showOpenFilePicker
         ? h('li', null, 'This browser remembers the file and reloads it live whenever flow.md changes.')
         : h('li', null, 'Live reload needs Chrome or Edge, or serving the folder (below).'),
-      served
+      SERVED
         ? h('li', null, 'No flow.md was found next to this page on the server.')
-        : h('li', null, 'Auto-load: run ', h('code', null, 'python -m http.server'), ' inside ', h('code', null, 'brain/'), ' and open ', h('code', null, 'http://localhost:8000/flow-viewer.html'), '.')));
+        : h('li', null, 'Auto-load with source excerpts: run ', h('code', null, 'python -m http.server'), ' in the project root and open ', h('code', null, 'http://localhost:8000/brain/flow-viewer.html'), '.')));
 }
 
 function renderSide() {
-  const side = $('#side'); const d = S.doc;
-  const focused = document.activeElement && document.activeElement.id === 'q';
+  const side = $('#side'), d = S.doc, f = curFlow();
   side.replaceChildren();
   if (!d) return;
-  const q = h('input', { id: 'q', class: 'search', type: 'search', placeholder: 'Search files, functions…  ( / )', value: S.q, 'aria-label': 'Search' });
-  q.addEventListener('input', () => { S.q = q.value; render(); });
-  side.append(q);
+  const sec = (label, ...kids) => h('div', { class: 'rsec' }, h('div', { class: 'rlab' }, label), kids);
+  side.append(sec('Traces', d.flows.map(fl => h('button', {
+    class: 'trc' + (fl === f ? ' sel' : '') + (fl.steps.length ? '' : ' off'),
+    style: `--h:${fl.steps[0] ? fl.steps[0].layer.hue : HUES[0]}`, onclick: () => go('flow', fl.id),
+  },
+    h('div', { class: 'r1' }, h('i', { class: 'dot' }), h('span', { class: 'nm' }, fl.name), h('span', { class: 'ct' }, fl.steps.length)),
+    fl.trigger && h('div', { class: 'sm' }, inline(fl.trigger))))));
+  if (f && f.phases.length) {
+    const act = f.steps[S.cursor] && f.steps[S.cursor].phase;
+    side.append(sec('Phases', f.phases.map(p => {
+      const a = p.steps[0].step + 1, b = p.steps[p.steps.length - 1].step + 1;
+      return h('button', { class: 'phr' + (p === act && S.mode === 'trace' ? ' active' : ''), style: `--h:${p.hue}`, onclick: () => { if (S.mode !== 'trace') { S.mode = 'trace'; S.cursor = a - 1; S.sel = null; S.scroll = 'auto'; render(); } else setCursor(a - 1); } },
+        h('span', { class: 'bar' }), h('span', { class: 'tx' }, h('div', { class: 'nm' }, p.name), h('div', { class: 'rg' }, a === b ? `step ${a}` : `steps ${a}–${b}`)));
+    })));
+    side.append(sec('Layers', f.lanes.map(l => h('div', { class: 'lyr', style: `--h:${l.hue}`, title: l.prefixes.join(', ') || null },
+      h('i', { class: 'dot' }), h('span', null, l.name), h('span', { class: 'n' }, f.steps.filter(st => st.layer === l).length))),
+      h('p', { class: 'hint' }, 'Presentation mode swaps function names for plain English — the same trace, for a non-engineer audience.')));
+  }
   const errs = d.lint.filter(l => l.sev === 'error').length, warns = d.lint.filter(l => l.sev === 'warn').length;
-  const nav = (label, view, id, extra) => h('button', { class: 'nav' + (!S.q && S.route.view === view && (S.route.id || null) === (id || null) ? ' active' : ''), onclick: () => { S.q = ''; go(view, id); } }, label, extra);
-  side.append(
-    h('div', { class: 'navh' }, 'Project'),
+  const nav = (label, view, extra) => h('button', { class: 'nav' + (!f && S.route.view === view ? ' active' : ''), onclick: () => go(view) }, label, extra);
+  side.append(sec('Project',
     nav('Overview', 'overview'),
-    nav('Files', 'files', null, h('span', { class: 'n' }, d.files.size)),
-    nav('Lint', 'lint', null, h('span', { class: 'pill ' + (errs ? 'err' : warns ? 'warn' : 'ok') }, errs ? errs + ' err' : warns ? warns + ' warn' : 'clean')),
-    h('div', { class: 'navh' }, 'Flows (' + d.flows.length + ')'),
-    ...d.flows.map(f => nav(f.name, 'flow', f.id, h('span', { class: 'n' }, f.blockLines))));
-  if (focused) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+    nav('Files', 'files', h('span', { class: 'n' }, d.files.size)),
+    nav('Lint', 'lint', h('span', { class: 'pill ' + (errs ? 'err' : warns ? 'warn' : 'ok') }, errs ? errs + ' err' : warns ? warns + ' warn' : 'clean'))));
+}
+
+// ---- trace timeline
+function renderTrace(f) {
+  if (!f.steps.length) return h('div', { style: 'padding:18px 22px' }, h('h2', null, f.name), h('p', { class: 'sub' }, 'This flow has no steps yet.'));
+  const L = f.lanes.length, lane = new Map(f.lanes.map((l, i) => [l, i]));
+  const wrap = h('div', { class: 'trace' + (S.present ? ' present' : ''), style: `--cols:70px repeat(${L}, minmax(170px, 1fr));--L:${L}` });
+  wrap.append(h('div', { class: 'grid lanes' }, h('div', { class: 'lab' }, 'STEP'),
+    f.lanes.map(l => h('div', { class: 'lane', style: `--h:${l.hue}`, title: l.prefixes.join(', ') || null }, h('i', { class: 'dot' }), h('span', null, l.name)))));
+  const intro = f.text.map(t => t.trim()).filter(Boolean).join(' ');
+  if (f.trigger || intro) wrap.append(h('div', { class: 'grid trig' }, h('div', null,
+    f.trigger && [h('span', { class: 'l' }, 'TRIGGER'), inline(f.trigger)], f.trigger && intro && ' — ', intro && inline(intro))));
+  for (const ph of f.phases) {
+    const band = h('section', { class: 'band', 'data-phase': ph.idx, style: `--h:${ph.hue}` },
+      h('div', { class: 'band-h' }, h('span', { class: 'pnum' }, pad2(ph.idx + 1)), h('span', { class: 'pname' }, ph.name), ph.sub && h('span', { class: 'psub' }, ph.sub)));
+    for (const st of ph.steps) {
+      if (st.boundary) {
+        const b = st.boundary;
+        band.append(h('div', { class: 'grid brow' }, h('button', { class: 'bnd', title: 'Process / network boundary', onclick: () => pickNode(b) }, '⇄ ' + b.label + (b.note ? ' — ' + b.note : ''))));
+      }
+      band.append(stepRow(st, lane.get(st.layer)));
+    }
+    wrap.append(band);
+  }
+  if (f.returnNode) {
+    const r = f.returnNode;
+    wrap.append(h('div', { class: 'grid rrow' }, h('div', { class: 'ret' }, h('span', { class: 'l' }, 'RETURN'), inline(r.label), r.note && ' — ' + r.note)));
+  }
+  return wrap;
+}
+function stepRow(st, li) {
+  const ref = st.kind === 'ref';
+  const title = S.present ? presentTitle(st) : ref ? '↪ ' + (st.targetFlow ? st.targetFlow.name : '@' + st.target + ' (missing)') : st.symbol;
+  const body = ref ? (st.targetFlow && st.targetFlow.trigger) : (st.attrs.plain || st.note);
+  const card = h('div', {
+    class: 'tcard' + (ref ? ' ref' : ''), role: 'button', tabindex: 0, 'data-node': st.id,
+    title: ref ? 'Double-click to open this trace' : null,
+    onclick: () => pickStep(st), ondblclick: () => { if (ref && st.targetFlow) go('flow', st.target); },
+  },
+    h('div', { class: 'ct' }, h('span', { class: 'tt' }, title),
+      st.cond && h('span', { class: 'tag2 cond', title: st.cond }, st.cond === 'else' ? 'else' : 'if ' + st.cond),
+      st.async && h('span', { class: 'tag2 async' }, 'async')),
+    body && h('div', { class: 'cb' }, inline(body)),
+    st.effects.length > 0 && h('div', { class: 'fx' }, st.effects.map(e => h('span', { class: 'fxc', title: e.note || null }, e.effect + ': ' + e.label))),
+    st.passes && h('div', { class: 'ps' }, h('span', { class: 'l' }, 'PASSES'), h('span', { class: 'v' }, st.passes)));
+  card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickStep(st); } });
+  return h('div', { class: 'grid srow', 'data-step': st.step, style: `--h:${st.layer.hue}` },
+    h('div', { class: 'gut' }, h('span', { class: 'sn' }, pad2(st.step + 1)), h('span', { class: 'spine' })),
+    h('div', { class: 'cell', style: `grid-column:${li + 2}` }, card));
+}
+function paintTrace() {
+  const f = curFlow(); if (!f) return;
+  const cur = f.steps[S.cursor], shown = S.sel ? stepOf(S.sel) : cur, main = $('#main');
+  for (const r of main.querySelectorAll('.srow')) r.classList.toggle('cur', +r.dataset.step === S.cursor);
+  for (const c of main.querySelectorAll('.tcard')) c.classList.toggle('sel', !!shown && c.dataset.node === shown.id);
+  for (const b of main.querySelectorAll('.band')) b.classList.toggle('active', !!cur && +b.dataset.phase === cur.phase.idx);
 }
 
 // ---- overview
@@ -629,14 +1084,19 @@ function renderOverview() {
   if (ov && (ov.edges.length || ov.nodes.length)) wrap.append(componentsSvg(ov));
   if (ov) { const t = ov.text.filter(l => l.trim()); if (t.length) wrap.append(prose(ov.text)); }
   if (d.flows.length) {
-    wrap.append(h('h3', null, 'Flows'));
+    wrap.append(h('h3', null, 'Traces'));
     wrap.append(h('div', { class: 'cards' }, d.flows.map(f => {
-      const files = new Set(); let steps = 0; walk(f.roots, n => { steps++; if (n.kind === 'call' && n.path) files.add(n.path); });
+      const files = new Set(); walk(f.roots, n => { if (n.kind === 'call' && n.path) files.add(n.path); });
       return h('button', { class: 'card', onclick: () => go('flow', f.id) },
         h('b', null, f.name),
         f.trigger && h('div', null, inline(f.trigger)),
-        h('div', { class: 'meta' }, `${steps} steps · ${files.size} files` + (d.refsTo.has(f.id) ? ` · used by ${d.refsTo.get(f.id).length}` : '')));
+        h('div', { class: 'meta' }, `${f.steps.length} steps · ${f.phases.length} phases · ${files.size} files` + (d.refsTo.has(f.id) ? ` · used by ${d.refsTo.get(f.id).length}` : '')));
     })));
+  }
+  if (d.layers.length) {
+    wrap.append(h('h3', null, 'Layers'), h('p', { class: 'sub' }, d.explicitLayers ? 'From the ```layers block — each step goes in the layer with the longest matching path prefix.' : 'No ```layers block, so each top-level folder is a layer. Add one under Overview to name and group them.'),
+      h('table', null, h('tr', null, h('th', null, 'Layer'), h('th', null, 'Paths')),
+        d.layers.map(l => h('tr', null, h('td', { style: `--h:${l.hue}` }, h('i', { class: 'dot', style: 'margin-right:9px' }), l.name), h('td', { class: 'mono' }, l.prefixes.join(', ') || (l === d.otherLayer ? '(no match)' : '—'))))));
   }
   for (const o of d.other) {
     wrap.append(h('h3', null, o.title), prose(o.text));
@@ -669,7 +1129,7 @@ function componentsSvg(ov) {
     }
     if (!changed) break;
   }
-  const FONT = '600 12.5px system-ui, sans-serif', BH = 38, GAPY = 26, GAPX = 90, PAD = 20;
+  const FONT = '600 12.5px ' + getComputedStyle(document.documentElement).getPropertyValue('--sans'), BH = 38, GAPY = 26, GAPX = 90, PAD = 20;
   const cols = [];
   names.forEach((n, i) => { (cols[layer[i]] = cols[layer[i]] || []).push(i); });
   const w = names.map(n => Math.min(240, textW(n, FONT) + 28));
@@ -707,7 +1167,7 @@ function componentsSvg(ov) {
   return svg;
 }
 
-// ---- flow
+// ---- tree / graph
 function renderFlow(f) {
   const d = S.doc;
   const wrap = h('div', null, h('h2', null, f.name));
@@ -718,23 +1178,19 @@ function renderFlow(f) {
   const all = []; walk(f.roots, n => all.push(n));
   const setDepth = (k) => { for (const n of all) { if (n.depth >= k - 1 && n.children.length) S.collapsed.add(n.id); else S.collapsed.delete(n.id); } render(); };
   wrap.append(h('div', { class: 'toolbar' },
-    h('span', { class: 'seg' },
-      h('button', { class: 'btn' + (S.mode === 'tree' ? ' on' : ''), onclick: () => { S.mode = 'tree'; render(); } }, 'Tree'),
-      h('button', { class: 'btn' + (S.mode === 'graph' ? ' on' : ''), onclick: () => { S.mode = 'graph'; render(); } }, 'Graph')),
     h('button', { class: 'btn', onclick: () => { all.forEach(n => S.collapsed.delete(n.id)); render(); } }, 'Expand all'),
     h('button', { class: 'btn', onclick: () => setDepth(1) }, 'Collapse all'),
     h('button', { class: 'btn', onclick: () => setDepth(2) }, 'Depth 2'),
     h('button', { class: 'btn', onclick: () => setDepth(3) }, 'Depth 3'),
     S.mode === 'graph' && h('button', { class: 'btn', onclick: () => { delete S.views[f.id]; S.fitExact = true; render(); } }, 'Fit')));
-  const dirs = [...new Set(all.filter(n => n.kind === 'call' && n.path).map(n => topDir(n.path)))];
-  if (dirs.length > 1) wrap.append(h('div', { class: 'legend' }, dirs.map(dd => h('span', null, h('i', { style: `background:${dirVar(dd + '/x')}` }), dd + '/'))));
   if (!f.roots.length) { wrap.append(h('p', { class: 'sub' }, 'This flow has no steps yet.')); return wrap; }
   if (S.mode === 'graph') wrap.append(renderGraph(f));
   else wrap.append(treeUl(f.roots, [f.id], true));
   return wrap;
 }
 
-function nodeRow(n, opts = {}) {
+function selectInTree(n) { S.sel = n; S.cursor = stepIndexOf(n); S.sheet = true; render(); }
+function nodeRow(n) {
   const hasKids = n.children.length > 0 || (n.kind === 'ref' && n.targetFlow);
   const open = n.kind === 'ref' ? S.refOpen.has(n.id) : !S.collapsed.has(n.id);
   const toggle = (e) => {
@@ -743,26 +1199,25 @@ function nodeRow(n, opts = {}) {
     else { S.collapsed.has(n.id) ? S.collapsed.delete(n.id) : S.collapsed.add(n.id); }
     render();
   };
-  const hl = (t) => highlight(t, opts.terms);
-  const parts = [];
-  if (!opts.flat) parts.push(h('span', { class: 'tw' + (hasKids ? '' : ' leaf'), onclick: hasKids ? toggle : null }, hasKids ? (open ? '▾' : '▸') : '•'));
+  const parts = [h('span', { class: 'tw' + (hasKids ? '' : ' leaf'), onclick: hasKids ? toggle : null }, hasKids ? (open ? '▾' : '▸') : '•')];
   if (n.cond) parts.push(h('span', { class: 'tag cond' }, n.cond === 'else' ? 'else' : 'if ' + n.cond));
   if (n.async) parts.push(h('span', { class: 'tag async' }, 'async'));
   if (n.kind === 'call') {
-    parts.push(h('span', { class: 'sym' }, hl(n.symbol)));
-    if (n.path && (!n.inherited || opts.flat)) parts.push(h('span', { class: 'path' }, hl(n.path)));
+    parts.push(h('span', { class: 'sym' }, n.symbol));
+    if (n.path && !n.inherited) parts.push(h('span', { class: 'path' }, n.path));
   } else if (n.kind === 'boundary') {
-    parts.push(h('span', { class: 'tag bnd' }, '⇄'), h('span', { class: 'sym' }, hl(n.label)));
+    parts.push(h('span', { class: 'tag bnd' }, '⇄'), h('span', { class: 'sym' }, n.label));
   } else if (n.kind === 'effect') {
-    parts.push(h('span', { class: 'tag eff' }, n.effect), h('span', { class: 'mono' }, hl(n.label)));
+    parts.push(h('span', { class: 'tag eff' }, n.effect), h('span', { class: 'mono' }, n.label));
   } else if (n.kind === 'result') {
-    parts.push(h('span', { class: 'mono', style: 'color:var(--muted)' }, '→ ', hl(n.label)));
+    parts.push(h('span', { class: 'mono', style: 'color:var(--ink-7)' }, '→ ', n.label));
   } else if (n.kind === 'ref') {
     parts.push(h('span', { class: 'reflink', onclick: (e) => { e.stopPropagation(); if (n.targetFlow) go('flow', n.target); } }, '↪ ' + (n.targetFlow ? n.targetFlow.name : '@' + n.target + ' (missing)')));
   }
-  if (n.note) parts.push(h('span', { class: 'note' }, hl(n.note)));
+  if (n.note) parts.push(h('span', { class: 'note' }, n.note));
   const style = n.kind === 'call' && n.path ? `--dc:${dirVar(n.path)}` : null;
-  const row = h('div', { class: 'row' + (S.sel === n ? ' sel' : '') + (opts.hit ? ' hit' : ''), 'data-id': n.id, tabindex: 0, style, onclick: () => { if (opts.flat) goToNode(n); else { S.sel = n; render(); } } }, parts);
+  const shown = S.sel || curFlow().steps[S.cursor];
+  const row = h('div', { class: 'row' + (shown === n ? ' sel' : ''), 'data-id': n.id, tabindex: 0, style, onclick: () => selectInTree(n) }, parts);
   row.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') row.click();
     else if ((e.key === 'ArrowRight' && !open) || (e.key === 'ArrowLeft' && open)) { if (hasKids) toggle(e); }
@@ -781,13 +1236,8 @@ function treeUl(nodes, stack, root) {
     return li;
   }));
 }
-function highlight(text, terms) {
-  if (!terms || !terms.length || !text) return text;
-  const re = new RegExp('(' + terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig');
-  return text.split(re).map((p, i) => i % 2 ? h('mark', null, p) : p);
-}
 
-// ---- graph (left-to-right tidy tree with pan/zoom)
+// graph: left-to-right tidy tree with pan/zoom
 const GF1 = '600 12px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono');
 const GF2 = '10.5px ' + getComputedStyle(document.documentElement).getPropertyValue('--mono');
 let lastLayout = null;
@@ -815,6 +1265,7 @@ function renderGraph(f) {
   const colX = []; let acc = 0; colW.forEach((w, i) => { colX[i] = acc; acc += w + GAPX; });
   const at = new Map(items.map(it => [it.n, it]));
   lastLayout = { at, colX, BH };
+  const shown = S.sel || f.steps[S.cursor];
 
   const box = h('div', { class: 'graphbox' });
   const svg = s('svg', { role: 'img', 'aria-label': 'Call graph for ' + f.name });
@@ -830,22 +1281,22 @@ function renderGraph(f) {
   }
   for (const it of items) {
     const n = it.n, x = colX[it.d];
-    const cls = 'gnode' + (S.sel === n ? ' sel' : '') + (n.kind === 'boundary' ? ' bnd' : '') + (n.kind === 'effect' ? ' eff' : '') + (n.kind === 'result' ? ' res' : '');
-    const node = s('g', { class: cls, transform: `translate(${x},${it.y})`, style: n.kind === 'call' && n.path ? `--dc:${dirVar(n.path)}` : (n.kind === 'ref' ? '--dc:var(--accent)' : null) },
+    const cls = 'gnode' + (shown === n ? ' sel' : '') + (n.kind === 'boundary' ? ' bnd' : '') + (n.kind === 'effect' ? ' eff' : '') + (n.kind === 'result' ? ' res' : '');
+    const node = s('g', { class: cls, transform: `translate(${x},${it.y})`, style: n.kind === 'call' && n.path ? `--dc:${dirVar(n.path)}` : (n.kind === 'ref' ? '--dc:var(--link)' : null) },
       s('title', null, n.raw),
       s('rect', { class: 'box', width: it.w, height: BH, rx: n.kind === 'ref' ? 20 : 7 }),
       s('text', { class: 't1', x: 12, y: 17 }, clip(it.t1, GF1, it.w - 22)),
       s('text', { class: 't2', x: 12, y: 32 }, clip(it.t2 + (n.async ? ' · async' : ''), GF2, it.w - 22)));
     const hidden = S.collapsed.has(n.id) && n.children.length;
     if (hidden || n.children.length) {
-      node.append(s('circle', { cx: it.w, cy: BH / 2, r: 8, style: 'fill:var(--panel);stroke:var(--edge)' }),
-        s('text', { x: it.w, y: BH / 2 + 3.5, 'text-anchor': 'middle', style: 'font-size:10px;fill:var(--muted)' }, hidden ? '+' + n.children.length : '−'));
+      node.append(s('circle', { cx: it.w, cy: BH / 2, r: 8, style: 'fill:var(--bg-chrome);stroke:var(--edge)' }),
+        s('text', { x: it.w, y: BH / 2 + 3.5, 'text-anchor': 'middle', style: 'font-size:10px;fill:var(--ink-7)' }, hidden ? '+' + n.children.length : '−'));
     }
     node.addEventListener('click', (e) => {
       if (svg.dataset.moved === '1') return;
       if (e.target.tagName === 'circle' || (e.target.tagName === 'text' && !e.target.classList.length)) { S.collapsed.has(n.id) ? S.collapsed.delete(n.id) : S.collapsed.add(n.id); render(); return; }
       if (n.kind === 'ref' && n.targetFlow && e.detail > 1) { go('flow', n.target); return; }
-      S.sel = n; render();
+      selectInTree(n);
     });
     node.addEventListener('dblclick', () => { if (n.kind === 'ref' && n.targetFlow) go('flow', n.target); else if (n.children.length) { S.collapsed.has(n.id) ? S.collapsed.delete(n.id) : S.collapsed.add(n.id); render(); } });
     g.append(node);
@@ -896,26 +1347,6 @@ function centerOn(n) {
   svg.querySelector('g').setAttribute('transform', `translate(${v.x},${v.y}) scale(${v.k})`);
 }
 
-// ---- search
-function renderSearch() {
-  const d = S.doc, terms = S.q.toLowerCase().split(/\s+/).filter(Boolean);
-  const match = (str) => { const l = str.toLowerCase(); return terms.every(t => l.includes(t)); };
-  const wrap = h('div', null, h('h2', null, 'Search'), h('p', { class: 'sub' }, '“' + S.q.trim() + '”'));
-  const flowHits = d.flows.filter(f => match(f.name + ' ' + f.trigger + ' ' + f.id));
-  if (flowHits.length) wrap.append(h('h3', null, 'Flows'), h('div', { class: 'cards' }, flowHits.map(f => h('button', { class: 'card', onclick: () => { S.q = ''; go('flow', f.id); } }, h('b', null, highlight(f.name, terms)), f.trigger && h('div', { class: 'meta' }, highlight(f.trigger, terms))))));
-  let total = 0;
-  for (const f of d.flows) {
-    const hits = [];
-    walk(f.roots, n => { if (match([n.path, n.symbol, n.label, n.note, n.cond || '', n.effect || ''].join(' '))) hits.push(n); });
-    if (!hits.length) continue;
-    total += hits.length;
-    wrap.append(h('h3', null, f.name + ' ', h('span', { class: 'sub' }, '(' + hits.length + ')')),
-      h('div', null, hits.slice(0, 100).map(n => nodeRow(n, { flat: true, terms, hit: false }))));
-  }
-  if (!total && !flowHits.length) wrap.append(h('p', { class: 'sub' }, 'No matches.'));
-  return wrap;
-}
-
 // ---- files
 function renderFiles() {
   const d = S.doc;
@@ -925,13 +1356,14 @@ function renderFiles() {
       h('tr', null, h('th', null, 'Concern'), h('th', null, 'Files')),
       d.keyFiles.map(r => h('tr', null, h('td', null, inline(r.concern)), h('td', null, inline(r.files))))));
   }
-  const paths = [...d.files.keys()].sort((a, b) => d.dirs.indexOf(topDir(a)) - d.dirs.indexOf(topDir(b)) || a.localeCompare(b));
+  const paths = [...d.files.keys()].sort((a, b) => layerOf(d, a).idx - layerOf(d, b).idx || a.localeCompare(b));
   wrap.append(h('h3', null, 'All traced files (' + paths.length + ')'));
-  wrap.append(h('table', null, h('tr', null, h('th', null, 'File'), h('th', null, 'Used in')), paths.map(p => {
+  wrap.append(h('table', null, h('tr', null, h('th', null, 'File'), h('th', null, 'Layer'), h('th', null, 'Used in')), paths.map(p => {
     const byFlow = new Map();
     for (const n of d.files.get(p)) { if (!byFlow.has(n.flow)) byFlow.set(n.flow, []); byFlow.get(n.flow).push(n); }
     return h('tr', null,
       h('td', { class: 'mono', style: `border-left:3px solid ${dirVar(p)}` }, p),
+      h('td', null, layerOf(d, p).name),
       h('td', null, [...byFlow].map(([fl, ns]) => h('span', { class: 'chip', title: [...new Set(ns.map(n => n.symbol))].join(', '), onclick: () => goToNode(ns[0]) }, fl.name + ' · ' + [...new Set(ns.map(n => n.symbol))].slice(0, 3).join(', ') + (ns.length > 3 ? '…' : '')))));
   })));
   return wrap;
@@ -941,49 +1373,155 @@ function renderFiles() {
 function renderLint() {
   const d = S.doc;
   const wrap = h('div', null, h('h2', null, 'Lint'),
-    h('p', { class: 'sub' }, `Checks flow.md against the brain-docs format: current state only, notes ≤ ${LIMITS.note} chars, flows ≤ ${LIMITS.flowLines} lines, valid @refs.`));
+    h('p', { class: 'sub' }, `Checks flow.md against the brain-docs format: current state only, notes ≤ ${LIMITS.note} chars, flows ≤ ${LIMITS.flowLines} lines, plain ≤ ${LIMITS.plain} / passes ≤ ${LIMITS.passes} / fails ≤ ${LIMITS.fails} chars, valid @refs.`));
   if (!d.lint.length) { wrap.append(h('p', null, '✓ No issues.')); return wrap; }
   wrap.append(h('ul', { class: 'lint' }, d.lint.map(l => h('li', null, h('span', { class: 'sev ' + l.sev }, l.sev), h('span', null, l.msg), h('span', { class: 'ln' }, 'line ' + l.line)))));
   return wrap;
 }
 
-// ---- details panel
+// ---- detail panel
+let detailToken = 0;
 function renderDetails() {
-  const box = $('#details'); const n = S.sel;
+  const box = $('#details'), f = curFlow(), tok = ++detailToken;
   box.replaceChildren();
-  if (!n || !S.doc) { box.hidden = true; return; }
+  box.classList.toggle('sheet-open', S.sheet);
+  if (!f) { box.hidden = true; return; }
   box.hidden = false;
-  const d = S.doc;
-  const close = h('button', { class: 'btn close', onclick: () => { S.sel = null; render(); }, 'aria-label': 'Close details' }, '✕');
-  const [t1] = boxText(n);
-  box.append(close, h('h3', null, t1), h('div', { class: 'sub' }, { call: 'call', boundary: 'process / network boundary', effect: 'side effect · ' + n.effect, result: 'returns / responds with', ref: 'reference to another flow' }[n.kind]));
-  if (n.path) {
-    box.append(h('div', { class: 'k' }, 'File'), h('div', { class: 'mono', style: 'overflow-wrap:anywhere' }, n.path, ' ',
-      h('button', { class: 'btn', style: 'padding:0 6px;font-size:11px', onclick: (e) => { try { navigator.clipboard.writeText(n.path); e.target.textContent = 'copied'; } catch (err) { /* ignore */ } } }, 'copy')));
+  box.append(h('button', { class: 'btn close', onclick: () => { S.sheet = false; renderDetails(); }, 'aria-label': 'Close details' }, '✕'));
+  const n = S.sel || f.steps[S.cursor];
+  if (!n) { box.append(h('p', { class: 'nosel' }, 'Select a step to see what it does.')); return; }
+  const st = stepOf(n), isStep = n.step != null, layer = st ? st.layer : S.doc.layers[0];
+  box.style.setProperty('--h', layer.hue);
+  box.append(h('div', { class: 'dmeta' },
+    h('span', { class: 'badge' }, layer.name),
+    h('span', { class: 'sn2' }, isStep ? `step ${n.step + 1} of ${f.steps.length}` : KIND[n.kind] + (st ? ` · in step ${st.step + 1}` : '')),
+    n.cond && h('span', { class: 'tag2 cond', title: n.cond }, n.cond === 'else' ? 'else' : 'if ' + n.cond),
+    n.async && h('span', { class: 'tag2 async' }, 'async')));
+  box.append(h('h3', { class: 'dh' }, boxText(n)[0]));
+  if (n.path) box.append(h('button', { class: 'dpath', title: 'Copy path', onclick: (e) => { try { navigator.clipboard.writeText(n.path); e.currentTarget.textContent = n.path + '  ✓ copied'; } catch (err) { /* ignore */ } } }, n.path));
+
+  const ref = n.kind === 'ref';
+  const plain = n.attrs.plain || (ref ? `Continues in the “${n.targetFlow ? n.targetFlow.name : n.target}” trace.` : n.note);
+  const tech = (n.attrs.plain || ref) && n.note ? n.note : '';
+  if (plain) box.append(h('div', { class: 'plainbox' }, h('div', { class: 'lab' }, 'In plain English'), h('p', null, inline(plain))));
+  if (tech) box.append(h('p', { class: 'tech' }, inline(tech)));
+  if (n.kind === 'boundary') box.append(h('p', { class: 'tech' }, 'Process / network boundary — everything below it runs on the other side.'));
+  if (n.kind === 'effect') box.append(h('p', { class: 'tech' }, `Side effect (${n.effect}) of the step above.`));
+  if (n.kind === 'result') box.append(h('p', { class: 'tech' }, 'What the step above returns or responds with.'));
+  if (n.attrs.fails) box.append(h('div', { class: 'fail' }, h('span', { class: 'lab' }, 'If it fails'), h('p', null, inline(n.attrs.fails))));
+
+  const dsec = (label, aux, ...kids) => h('div', { class: 'dsec' }, h('div', { class: 'rule' }, h('span', { class: 'lab' }, label), h('span', { class: 'ln' }), aux), kids);
+  const chip = (m, label) => h('button', { class: 'chip2', style: `--h:${hueOf(m)}`, title: label, onclick: () => pickNode(m) }, h('i', { class: 'dot' }), h('span', null, label));
+  const passes = isStep ? n.passes : n.attrs.passes;
+  if (passes) box.append(dsec('Passes on', null, h('div', { class: 'pass' }, passes)));
+  if (isStep && n.effects.length) box.append(dsec('Side effects', null, n.effects.map(e => chip(e, e.effect + ': ' + e.label))));
+  if (ref && n.targetFlow) box.append(dsec('Continues in', null, h('button', { class: 'chip2', style: `--h:${n.targetFlow.steps[0] ? n.targetFlow.steps[0].layer.hue : HUES[0]}`, onclick: () => go('flow', n.target) }, h('i', { class: 'dot' }), h('span', null, n.targetFlow.name + '  →'))));
+
+  if (n.path && n.kind === 'call' && SERVED) {
+    const pre = h('pre', { class: 'src' }, 'loading…'), where = h('span', { class: 'aux' });
+    const sec = dsec('Source', [where, ' ', h('a', { href: srcUrl(n.path), target: '_blank', rel: 'noopener' }, 'open file ↗')], pre);
+    box.append(sec);
+    loadSource(n.path).then(txt => {
+      if (tok !== detailToken) return;
+      if (txt == null) { sec.remove(); return; }
+      const ex = excerpt(txt, n.symbol);
+      pre.textContent = ex.text || '(empty file)';
+      where.textContent = ex.found ? 'L' + ex.line : 'symbol not found · top of file';
+    });
   }
-  if (n.note) box.append(h('div', { class: 'k' }, 'Note'), h('div', null, n.note));
-  if (n.cond) box.append(h('div', { class: 'k' }, 'Runs when'), h('div', null, n.cond));
-  if (n.async) box.append(h('div', { class: 'k' }, 'Async'), h('div', null, 'Runs in the background / off the request path.'));
-  box.append(h('div', { class: 'k' }, 'Source'), h('div', { class: 'mono' }, 'flow.md line ' + n.line + ' · ' + n.flow.name));
-  if (n.parent) box.append(h('div', { class: 'k' }, 'Called by'), h('span', { class: 'chip', onclick: () => goToNode(n.parent) }, boxText(n.parent)[0]));
-  if (n.children.length) box.append(h('div', { class: 'k' }, 'Calls (' + n.children.length + ')'), h('div', null, n.children.map(c => h('span', { class: 'chip', onclick: () => goToNode(c) }, boxText(c)[0]))));
-  if (n.kind === 'ref' && n.targetFlow) box.append(h('div', { class: 'k' }, 'Target flow'), h('span', { class: 'chip', onclick: () => go('flow', n.target) }, n.targetFlow.name), n.targetFlow.trigger && h('div', { class: 'sub' }, n.targetFlow.trigger));
-  // Same symbol / file / boundary elsewhere.
-  const others = [];
-  for (const m of d.nodes.values()) {
-    if (m === n) continue;
-    if (n.kind === 'call' && m.kind === 'call' && m.path === n.path && m.symbol === n.symbol) others.push(m);
-    else if (n.kind !== 'call' && m.kind === n.kind && m.label === n.label) others.push(m);
-  }
-  if (others.length) box.append(h('div', { class: 'k' }, 'Also appears in'), h('div', null, others.map(m => h('span', { class: 'chip', onclick: () => goToNode(m) }, m.flow.name))));
+
+  const calls = isStep ? n.subSteps : [];
+  const calledBy = st ? (isStep ? (n.stepParent ? [n.stepParent] : (n.step === 0 ? S.doc.refsTo.get(f.id) || [] : [])) : [st]) : [];
+  const col = (label, list) => h('div', null, h('div', { class: 'rule' }, h('span', { class: 'lab' }, `${label} (${list.length})`)),
+    list.length ? list.map(m => chip(m, m.flow !== f ? m.flow.name + ' · ' + boxText(m.stepParent || m)[0] : boxText(m)[0])) : h('div', { class: 'none' }, '—'));
+  box.append(h('div', { class: 'cc' }, col('Calls', calls), col('Called by', calledBy)));
+
   if (n.kind === 'call' && n.path) {
-    const fl = [...new Set((d.files.get(n.path) || []).map(m => m.flow))].filter(f => f !== n.flow);
-    if (fl.length) box.append(h('div', { class: 'k' }, 'Same file in other flows'), h('div', null, fl.map(f => h('span', { class: 'chip', onclick: () => goToNode(d.files.get(n.path).find(m => m.flow === f)) }, f.name))));
+    const others = [];
+    for (const m of S.doc.nodes.values()) if (m !== n && m.flow !== f && m.kind === 'call' && m.path === n.path && m.symbol === n.symbol) others.push(m);
+    if (others.length) box.append(dsec('Also in', null, others.map(m => chip(m, m.flow.name + ' · step ' + (stepIndexOf(m) + 1)))));
+  }
+  box.append(h('div', { class: 'dfoot' }, `flow.md line ${n.line} · ${f.name}`));
+}
+
+// ---------------------------------------------------------------- palette (⌘K)
+function openPalette() {
+  if (!S.doc) return;
+  if (S.pal) { S.pal.input.focus(); return; }
+  const input = h('input', { type: 'text', placeholder: 'Jump to a function, file, or what it does…', 'aria-label': 'Jump to', autocomplete: 'off', spellcheck: 'false' });
+  const res = h('div', { class: 'res', role: 'listbox' });
+  const bg = h('div', { class: 'pal-bg' }, h('div', { class: 'pal', role: 'dialog', 'aria-label': 'Jump to' }, input, res, h('div', { class: 'foot' }, '↑↓ move · Enter jump · Esc close')));
+  bg.addEventListener('mousedown', (e) => { if (e.target === bg) closePalette(); });
+  document.body.append(bg);
+  S.pal = { bg, input, res, items: [], i: 0 };
+  input.addEventListener('input', () => { S.pal.i = 0; paintPalette(); });
+  input.addEventListener('keydown', (e) => {
+    const p = S.pal;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); p.i = clamp(p.i + (e.key === 'ArrowDown' ? 1 : -1), 0, Math.max(0, p.items.length - 1)); markPalette(); }
+    else if (e.key === 'Enter') { e.preventDefault(); const it = p.items[p.i]; if (it) choose(it); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePalette(); }
+  });
+  paintPalette(); input.focus();
+}
+function closePalette() { if (S.pal) { S.pal.bg.remove(); S.pal = null; } }
+function choose(it) { closePalette(); if (it.flow) go('flow', it.flow.id); else goToNode(it.node); }
+function paletteHits(q) {
+  const d = S.doc, terms = q.toLowerCase().split(/\s+/).filter(Boolean), f = curFlow();
+  if (!terms.length) return [...d.flows.map(fl => ({ flow: fl })), ...(f ? f.steps.slice(0, 40).map(n => ({ node: n })) : [])];
+  const has = (str) => { const l = str.toLowerCase(); return terms.every(t => l.includes(t)); };
+  const out = [];
+  for (const fl of d.flows) if (has([fl.name, fl.trigger, fl.id].join(' '))) out.push({ flow: fl, score: 10 });
+  for (const n of d.nodes.values()) {
+    if (!has([n.symbol, n.path, n.label, n.note, n.effect, ...Object.values(n.attrs)].join(' '))) continue;
+    const sym = (n.symbol || n.label).toLowerCase();
+    let score = n.step != null ? 2 : 0;
+    for (const t of terms) score += sym.startsWith(t) ? 4 : sym.includes(t) ? 3 : (n.path || '').toLowerCase().includes(t) ? 1 : 0;
+    if (n.flow === f) score += 0.5;
+    out.push({ node: n, score });
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 60);
+}
+function paintPalette() {
+  const p = S.pal, d = S.doc;
+  p.items = paletteHits(p.input.value);
+  // Group by layer (flows first), keeping score order inside each group.
+  const groups = new Map();
+  for (const it of p.items) {
+    const key = it.flow ? 'Traces' : (stepOf(it.node) || { layer: d.layers[0] }).layer;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(it);
+  }
+  const keys = [...groups.keys()].sort((a, b) => (a === 'Traces' ? -1 : a.idx) - (b === 'Traces' ? -1 : b.idx));
+  p.items = keys.flatMap(k => groups.get(k));
+  p.res.replaceChildren();
+  if (!p.items.length) { p.res.append(h('div', { class: 'grp none' }, 'No matches.')); return; }
+  let i = 0;
+  for (const k of keys) {
+    p.res.append(h('div', { class: 'grp' }, k !== 'Traces' && h('i', { class: 'dot', style: `--h:${k.hue}` }), h('span', { class: 'lab' }, k === 'Traces' ? 'Traces' : k.name)));
+    for (const it of groups.get(k)) {
+      const idx = i++, n = it.node;
+      const a = it.flow ? it.flow.name : boxText(n)[0];
+      const b = it.flow ? (it.flow.trigger || it.flow.steps.length + ' steps')
+        : [n.attrs.plain || n.note, n.path, n.flow.name + (n.step != null ? ' · step ' + (n.step + 1) : '')].filter(Boolean).join(' · ');
+      p.res.append(h('div', { class: 'it', role: 'option', 'data-i': idx, onmousemove: () => { if (p.i !== idx) { p.i = idx; markPalette(); } }, onclick: () => choose(it) },
+        h('div', { class: 'a' }, a), h('div', { class: 'b' }, b)));
+    }
+  }
+  markPalette();
+}
+function markPalette() {
+  const p = S.pal;
+  for (const el of p.res.querySelectorAll('.it')) {
+    const on = +el.dataset.i === p.i;
+    el.classList.toggle('on', on);
+    el.setAttribute('aria-selected', String(on));
+    if (on) { const r = el.getBoundingClientRect(), rr = p.res.getBoundingClientRect(); if (r.bottom > rr.bottom || r.top < rr.top) p.res.scrollTop += r.top - rr.top - rr.height / 2; }
   }
 }
 
 // ---------------------------------------------------------------- chrome
 $('#openBtn').onclick = openFile;
+$('#jumpBtn').onclick = openPalette;
 $('#reloadBtn').onclick = async () => {
   if (!S.src) return;
   if (S.src.kind === 'handle') { const f = await S.src.handle.getFile(); S.src.lastMod = f.lastModified; setText(await f.text()); }
@@ -991,19 +1529,28 @@ $('#reloadBtn').onclick = async () => {
 };
 $('#menuBtn').onclick = () => $('#side').classList.toggle('open');
 document.addEventListener('keydown', (e) => {
-  const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
-  if (e.key === '/' && !typing && S.doc) { e.preventDefault(); const q = $('#q'); if (q) q.focus(); }
-  else if (e.key === 'Escape') {
-    if (S.q) { S.q = ''; render(); }
-    else if (S.sel) { S.sel = null; render(); }
+  if (S.pal) return;
+  if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); openPalette(); return; }
+  const el = document.activeElement;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === '/') { e.preventDefault(); openPalette(); return; }
+  if (e.key === 'Escape') {
+    if (S.sel) { S.sel = null; update(null); }
+    else if (S.sheet) { S.sheet = false; renderDetails(); }
+    return;
   }
+  if (!traceOn()) return;
+  if (e.key === 'ArrowRight' || e.key === 'j') { e.preventDefault(); moveCursor(1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'k') { e.preventDefault(); moveCursor(-1); }
+  else if (e.key === ']') jumpPhase(1);
+  else if (e.key === '[') jumpPhase(-1);
+  else if (e.key === 'p') togglePresent();
 });
 
 // ---------------------------------------------------------------- boot
 (async function boot() {
-  applyTheme();
   parseHash();
-  if (/^https?:$/.test(location.protocol) && await loadFromUrl()) return;
+  if (SERVED && await loadFromUrl()) return;
   const saved = await idb.get(IDB_KEY);
   if (saved && saved.queryPermission) {
     try {

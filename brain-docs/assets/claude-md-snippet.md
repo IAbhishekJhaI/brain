@@ -39,7 +39,13 @@ and replace its block**; delete nodes for deleted code.
   `path :: symbol  — note`, 2-space indent = calls; `=>` boundary, `db:`/`ext:`
   side effects, `→` result, `[if …]`, `~` async, `@flow-id` refs). Notes ≤ 80 chars and
   say *what*, not *why*. Flows ≤ 40 lines.
-- `brain/flow-viewer.html` renders it; its Lint page flags violations.
+- Optional trace extras the viewer uses: a ` ```layers ` block under
+  Overview, `== Phase — subtitle` lines, and `| plain:` / `| passes:` /
+  `| fails:` lines under a step (plain English with no identifiers; the
+  artefact handed on; real failure behaviour). Keep them true when you
+  re-trace a step.
+- `brain/flow-viewer.html` renders it as a step-through trace; its Lint page
+  flags violations.
 
 ### `brain/todo.md` — action items, caveats, ideas
 - **Add** anything that surfaces: correctness/security risks noticed while

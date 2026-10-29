@@ -26,9 +26,13 @@ Chat sessions end; the reasoning behind code shouldn't. This skill maintains a
 | `brain/flow.md` | Snapshot of how the code executes *today* | "What calls what, in what order?" |
 | `brain/todo.md` | Tagged action items, caveats, ideas | "What's known-broken, known-limited, or worth doing?" |
 
-Alongside them sits `brain/flow-viewer.html`, a zero-dependency page that
-renders `flow.md` as collapsible call trees, graphs, a file index and a lint
-report.
+Alongside them sits `brain/flow-viewer.html` ("Tracer"), a single-file page
+that renders each flow as a step-through trace timeline: one swimlane per
+architecture layer, steps grouped into phases, and a detail panel with the
+plain-English explanation, what the step passes on, what happens if it fails,
+and a live source excerpt. A presentation mode swaps function names for plain
+English for non-engineers. It also keeps call-tree and graph views, a file
+index and a lint report.
 
 The system only works if the docs are updated **incrementally, as you work** —
 not in a batch when someone remembers to ask. A future session (or a future
@@ -80,8 +84,9 @@ There are three modes. Check the project root:
 5. **Install the viewer:** copy `assets/viewer/flow-viewer.html` to
    `brain/flow-viewer.html`. Tell the user how to open it: double-click it
    and pick `flow.md` once (Chrome/Edge remember the file and live-reload
-   it), or serve the folder (`python -m http.server` inside `brain/`) and it
-   loads on its own.
+   it), or serve the **project root** (`python -m http.server` there, then
+   open `http://localhost:8000/brain/flow-viewer.html`). Served that way it
+   loads `flow.md` on its own and can show source excerpts for each step.
 
 6. `decisions.md` starts empty of entries (the first real decision will
    arrive soon enough). If the setup itself involved choices worth recording
@@ -189,19 +194,32 @@ Browser -> API : REST
 API -> Postgres : SQL
 ```
 
+```layers
+Browser : web/src
+API     : api/routes, api/services
+Jobs    : api/jobs
+```
+
 ## Flow: Checkout {#checkout}
 Trigger: user clicks "Pay" on /cart
 
 ```flow
+== In the browser — check the cart, send it off
 web/src/cart/CartPage.tsx :: onPay()  — validate cart, show spinner
+  | plain: Checks the basket is still valid and starts the payment.
   web/src/lib/api.ts :: createOrder(cart)
+    | passes: OrderRequest { items[], coupon? }
     => POST /api/orders
+      == On the server — price it, save it, confirm it
       api/routes/orders.py :: create_order()
         api/services/pricing.py :: price_cart()
+          | plain: Works out the final price, including any discount.
+          | passes: PricedCart { lines[], total }
         [if coupon] apply_coupon()  — discount line items
         @payment
         db: INSERT orders
         ~ api/jobs/email.py :: send_receipt()
+          | fails: A mail outage is retried in the background; the order still succeeds.
   [if API error] showToast()
 ```
 
@@ -222,11 +240,35 @@ Grammar:
 - `@flow-id` — "continues in that flow" (each flow has a `{#id}`).
 - `# …` at the end of a line is a comment the viewer ignores.
 
+Trace extras (optional; they drive the viewer's timeline):
+- ` ```layers ` under `## Overview`: one line per architecture layer,
+  `Name : path/prefix, other/prefix`, in left-to-right lane order. A step goes
+  in the layer whose prefix matches its path most specifically (a single file
+  path works as a prefix too). Without it, each top-level folder is a layer.
+- `== Phase name — short subtitle` inside a flow block starts a phase: a
+  narrative chapter of the trace ("Through the gateway — let it in, work out
+  who's asking"). Without phases, runs of steps in the same layer are grouped.
+- `| plain: …`, `| passes: …`, `| fails: …` on the lines under a step attach
+  to that step:
+  - `plain` (≤ 120 chars): one sentence a non-engineer understands, with **no
+    identifiers**: "A doorman: too many requests from one address and it turns
+    you away", not "rate-limits per IP". Presentation mode shows it in place of
+    the function name; without it, the note is used.
+  - `passes` (≤ 80): names the **artefact** handed on, not the action:
+    `ScoredCandidate[] sorted best-first`, not "returns the scores". Without
+    it, the step's first unconditional `→ result` is used.
+  - `fails` (≤ 160): **real** degradation behaviour ("Redis down → logs and
+    lets the request through"). Leave it off when a failure is just a loud
+    error.
+  Add these to the steps that matter most (the primary flow, the boundaries,
+  anything that degrades), not to every helper.
+
 Shape and budgets:
 - `## Overview` holds one ` ```components ` block (`A -> B : label`, `<->`
   for two-way) for the big picture, plus at most two sentences.
 - One `## Flow:` section per entry point or user-visible action, each with a
-  `Trigger:` line. **≤ 40 lines per flow block** — past that, move a stable
+  `Trigger:` line. **≤ 40 lines per flow block**, not counting `==` and `|`
+  lines. Past that, move a stable
   sub-path into its own flow and reference it with `@id`. Shared paths (auth,
   the core engine) belong in one flow that others `@` reference, not copied.
 - `## Key files` is a lookup table: ≤ 3 paths per row, no prose.
@@ -237,8 +279,10 @@ Shape and budgets:
 
 Before ending the turn, check the touched flows' `Trigger`, `@refs` and Key
 files rows still hold, and fix anything stale you notice elsewhere —
-staleness discovered is staleness to repair. The viewer's **Lint** page
-checks the budgets, banned wording and broken `@refs`.
+staleness discovered is staleness to repair. The `| plain/passes/fails`
+lines describe the code too, so re-check them when you re-trace a step. The
+viewer's **Lint** page checks the budgets, banned wording, broken `@refs`,
+unknown `|` keys, identifiers in `plain`, and steps that match no layer.
 
 ### `brain/todo.md` — action items, caveats, ideas
 

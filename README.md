@@ -15,9 +15,11 @@ current *as it works*:
 | `brain/flow.md` | Snapshot of the *current* execution flow, as compact call trees | "What calls what, in what order?" |
 | `brain/todo.md` | Topic-grouped, severity-tagged action items, caveats, ideas (🔴🟠🟡🟢🔵) | "What's known-broken, known-limited, or worth doing?" |
 
-…plus **`brain/flow-viewer.html`**, a single-file visualizer for `flow.md`:
-collapsible call trees, a pan/zoom graph view, a component overview, search,
-a file index, and a lint report. Zero dependencies, works offline.
+…plus **`brain/flow-viewer.html`**, a single-file visualizer for `flow.md`.
+It draws each flow as a step-through trace timeline with layer swimlanes,
+phases, failure notes and a presentation mode for non-engineers. It also has
+call-tree and graph views, a component overview, jump-to search, a file index
+and a lint report. No build step, and it works offline.
 
 Start a fresh session weeks later, and Claude can answer "why did we reject
 the fallback provider?" or "what's still blocking the deploy?" from the docs
@@ -218,35 +220,66 @@ bare `symbol()` lives in its parent's file), `— note` says what the hop does,
 mark side effects, `→ value` is what a step returns, `[if …]` is a branch,
 `~` is async, and `@id` continues in another flow. A `## Overview` section holds a ` ```components ` block
 (`A -> B : label`) for the big picture, and `## Key files` is a lookup table.
-Full rules are in [`SKILL.md`](brain-docs/SKILL.md).
+
+Optional extras turn a flow into a narrated trace in the viewer:
+
+````markdown
+```layers
+Browser : web/src
+API     : api/routes, api/services
+```
+
+```flow
+== On the server — price it, save it
+api/services/pricing.py :: price_cart()
+  | plain: Works out the final price, including any discount.
+  | passes: PricedCart { lines[], total }
+  | fails: Tax service down → falls back to the cached rate table.
+```
+````
+
+A ` ```layers ` block names the swimlanes and maps path prefixes to them.
+`== Phase — subtitle` lines group steps into chapters. `| plain:` (jargon-free,
+shown in presentation mode), `| passes:` (the artefact handed on) and
+`| fails:` (real degradation behaviour) attach to the step above them. Full
+rules are in [`SKILL.md`](brain-docs/SKILL.md).
 
 ## The visualizer
 
-`brain/flow-viewer.html` is one self-contained HTML file. It has no
-dependencies and makes no network calls beyond reading `flow.md`.
+`brain/flow-viewer.html` ("Tracer") is one self-contained HTML file. It
+needs no build step. It loads the IBM Plex fonts from Google Fonts when
+online and falls back to system fonts offline. Otherwise it only reads
+`flow.md` and, when served, your source files.
 
 - **Open it:** double-click it, click **Open flow.md** and pick the file (or
   drag it onto the page). In Chrome and Edge the viewer remembers the file
   and **live-reloads** whenever it changes, so you can keep it open while
   Claude works. Other browsers load a static copy; press Open again to
   refresh.
-- **Or serve the folder** for zero clicks: run `python -m http.server`
-  inside `brain/` and open `http://localhost:8000/flow-viewer.html`. It
-  auto-loads and live-reloads `flow.md`.
+- **Or serve the project root** for zero clicks and source excerpts: run
+  `python -m http.server` in the project root and open
+  `http://localhost:8000/brain/flow-viewer.html`. It auto-loads and
+  live-reloads `flow.md`.
 
 What you get:
-- **Overview:** the component diagram, plus a card for every flow with its
-  trigger.
-- **Flow view:** a collapsible call tree (expand/collapse, depth 2/3),
-  color-coded by top-level folder. `@refs` expand inline.
-- **Graph view:** the same flow as a left-to-right diagram you can pan and
-  zoom.
-- **Search** (`/`): across files, functions and notes in every flow.
-- **Files:** every traced file and which flows touch it.
-- **Lint:** flags legacy `[CHANGED]` tags, history wording, notes and flows
-  over budget, broken `@refs` and duplicate ids.
-- **Details:** click any node to see its caller, callees, and where else the
-  same function or file appears.
+- **Trace timeline** (the default for each flow): the flow drawn top to
+  bottom as numbered steps, each card in the swimlane of the layer that runs
+  it, grouped into phase bands. Step through it with `◀ ▶`, `←/→` or `j/k`;
+  jump phases with `[ ]`.
+- **Presentation mode** (`p`): cards show plain English instead of function
+  names. The layout doesn't move, so you can switch mid-walkthrough.
+- **Detail panel:** layer, file path, plain-English and technical
+  descriptions, **If it fails**, **Passes on**, side effects, a source
+  excerpt (when served from the project root), and **Calls / Called by**
+  chips that explore sideways without losing your place.
+- **Shareable links:** the URL keeps the flow, step, selection and
+  presentation mode.
+- **Jump to** (`⌘K` / `Ctrl-K` / `/`): search functions, files and
+  plain-English descriptions across every flow.
+- **Tree and Graph views** of the same flow, plus **Overview** (component
+  diagram, traces, layers), **Files** (every traced file and its flows) and
+  **Lint** (legacy tags, history wording, budgets, broken `@refs`, unknown
+  `|` keys, identifiers in plain English, steps that match no layer).
 
 ## Repo layout
 
