@@ -529,10 +529,11 @@ function parseDoc(text) {
       else { fence.lines.push({ text: ln, no }); if (sec) content.push({ text: ln, no }); }
       continue;
     }
-    // Strip <!-- html comments --> (template guidance) outside fences.
-    if (inComment) { const e = ln.indexOf('-->'); if (e < 0) continue; ln = ln.slice(e + 3); inComment = false; }
-    ln = ln.replace(/<!--.*?-->/g, '');
-    const cs = ln.indexOf('<!--'); if (cs >= 0) { inComment = true; ln = ln.slice(0, cs); }
+    // Strip HTML comments (template guidance) outside fences. The markers are written
+    // as \x escapes: a literal open/close marker inside <script> confuses HTML parsers.
+    if (inComment) { const e = ln.indexOf('--\x3e'); if (e < 0) continue; ln = ln.slice(e + 3); inComment = false; }
+    ln = ln.replace(/\x3c!--.*?--\x3e/g, '');
+    const cs = ln.indexOf('\x3c!--'); if (cs >= 0) { inComment = true; ln = ln.slice(0, cs); }
     if (sec) content.push({ text: ln, no });
     let m;
     if ((m = ln.match(/^\s*```+\s*([\w-]*)/))) { fence = { lang: m[1].toLowerCase(), start: no, lines: [] }; continue; }
