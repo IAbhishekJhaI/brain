@@ -9,8 +9,10 @@ description: >-
   decision log for this repo", "remember why we chose X"). Also use it in any
   repo that already has a brain/ folder: after completing a meaningful code
   change, when the user says "update the brain docs" or "log this decision",
-  when a risk/limitation/idea surfaces worth writing down, or when the user
-  asks why a past decision was made (read decisions.md before answering).
+  when a risk/limitation/idea surfaces worth writing down, when the user
+  asks why a past decision was made (read decisions.md before answering),
+  when they want to see or visualize the code flow, or when they ask to
+  "upgrade the brain flow doc" / clean up an unreadable flow.md.
 ---
 
 # brain-docs — a living project memory
@@ -20,17 +22,24 @@ Chat sessions end; the reasoning behind code shouldn't. This skill maintains a
 
 | File | Holds | Answers |
 |---|---|---|
-| `brain/decisions.md` | Dated decision log (newest first) | "Why is it built this way?" |
-| `brain/flow.md` | Whole-system execution flow | "What calls what, in what order?" |
+| `brain/decisions.md` | Dated decision log (newest first) — the project's *history* | "Why is it built this way?" |
+| `brain/flow.md` | Snapshot of how the code executes *today* | "What calls what, in what order?" |
 | `brain/todo.md` | Tagged action items, caveats, ideas | "What's known-broken, known-limited, or worth doing?" |
+
+Alongside them sits `brain/flow-viewer.html`, a zero-dependency page that
+renders `flow.md` as collapsible call trees, graphs, a file index and a lint
+report.
 
 The system only works if the docs are updated **incrementally, as you work** —
 not in a batch when someone remembers to ask. A future session (or a future
 maintainer) relies on them being current.
 
-There are two modes. Check whether `brain/` exists in the project root:
+There are three modes. Check the project root:
 - **No `brain/` folder, or the user asks to set one up → Setup mode.**
-- **`brain/` exists → Maintain mode.**
+- **`brain/flow.md` is in the legacy format → Upgrade mode** (see below for
+  how to detect it). Offer the upgrade; don't silently keep extending a
+  legacy file.
+- **Otherwise `brain/` exists → Maintain mode.**
 
 ---
 
@@ -59,15 +68,22 @@ There are two modes. Check whether `brain/` exists in the project root:
    to sit naturally in the file; don't duplicate it if a version is already
    present.
 
-4. **Seed `flow.md` with a real trace.** Explore the codebase and write the
-   actual entry points, call paths, and key files into the template's
-   sections — a skeleton with placeholders has no value until it describes
-   the real system. If the codebase is large, trace the primary execution
-   path end-to-end first and note which areas remain unmapped. Only skip
-   this (leaving the template + a 🔴 todo item to do it later) if the user
-   asks to skip it.
+4. **Seed `flow.md` with a real trace** in the format described under
+   "`brain/flow.md`" below. Explore the codebase and write the actual entry
+   points and call paths — a skeleton with placeholders has no value until
+   it describes the real system. Start with the Overview `components` block
+   and the primary flow; add one `## Flow:` section per other entry point.
+   If the codebase is large, trace the primary path end-to-end first and add
+   a 🔴 todo naming the areas still unmapped. Only skip this (leaving the
+   template + a 🔴 todo item to do it later) if the user asks to skip it.
 
-5. `decisions.md` starts empty of entries (the first real decision will
+5. **Install the viewer:** copy `assets/viewer/flow-viewer.html` to
+   `brain/flow-viewer.html`. Tell the user how to open it: double-click it
+   and pick `flow.md` once (Chrome/Edge remember the file and live-reload
+   it), or serve the folder (`python -m http.server` inside `brain/`) and it
+   loads on its own.
+
+6. `decisions.md` starts empty of entries (the first real decision will
    arrive soon enough). If the setup itself involved choices worth recording
    — e.g. the user picked committed-vs-ignored for a specific reason — that
    can be the first entry.
@@ -77,12 +93,50 @@ look like, read `references/examples.md`.
 
 ---
 
+## Upgrade mode — legacy `flow.md`
+
+Older versions of this skill produced a flow.md that grows without bound:
+`[CHANGED: …]` / `[NEW]` tags never cleared, rationale and history written
+into call trees, paragraph-length nodes. On real projects it reached 1,000+
+lines and stopped being readable or trustworthy.
+
+**Detect it:** `brain/flow.md` contains `[CHANGED` or `[NEW` tags, or has no
+` ```flow ` fenced blocks. (The viewer shows a "Legacy format" banner too.)
+
+**Upgrade it** (ask first — it's a rewrite of a file the user relies on):
+
+1. Rename the old file to `brain/flow.old.md`. It is a *map of what exists*,
+   not a source of truth — parts of it are usually stale.
+2. **Re-trace from the code** into the current format: list the entry points
+   (routes, pages, CLI commands, jobs, event handlers), group them into
+   flows, and verify every node against the source before writing it. Never
+   copy a call tree across without checking it.
+3. **Rescue, don't drop:** rationale found in the old doc that isn't in
+   `decisions.md` yet becomes a D/W/A/T entry (date it to when the decision
+   was made if the old doc says, otherwise today with "(recovered from
+   flow.md)"). Caveats, dead code and limitations become `todo.md` items.
+4. Install or refresh `brain/flow-viewer.html`, and check the viewer's Lint
+   page (or the budgets below) is clean.
+5. Update the project's `CLAUDE.md` standing-rule block to the current
+   `assets/claude-md-snippet.md` wording — the old block is what told
+   sessions to add `[CHANGED]` tags.
+6. Tell the user `flow.old.md` can be deleted once they're happy, and log
+   the upgrade in `decisions.md`.
+
+For a very large codebase, trace the primary flow fully first, then the
+rest one area at a time; track unfinished areas as a 🔴 todo rather than
+leaving half-converted legacy text in the new file.
+
+---
+
 ## Maintain mode
 
 Update the docs **before ending any turn** in which you changed code, made a
 decision, or learned something worth keeping. Match each file's existing
 structure and tone. If one of the three files is missing, recreate it from
-its template.
+its template. If `brain/flow-viewer.html` is missing, or its
+`<meta name="brain-docs-viewer" content="N">` version is lower than the copy
+in this skill's `assets/viewer/`, copy the skill's version over it.
 
 ### `brain/decisions.md` — the decision log
 
@@ -104,24 +158,87 @@ A line like **Verified:** (how the change was proven to work) is a welcome
 optional fifth part. Several related sub-decisions from one piece of work can
 share a dated section as numbered sub-entries.
 
-### `brain/flow.md` — whole-system execution flow
+### `brain/flow.md` — a snapshot of the current code
 
-When a change alters *how execution travels* — a new endpoint, a new call in
-a path, changed inputs/outputs of a stage, a new provider/adapter, a new
-frontend data path — update:
+**flow.md describes how the code executes right now — nothing else.** It is
+not a changelog and not a design doc. History lives in `decisions.md` and
+git; known problems live in `todo.md`. A reader should be able to trust every
+line of it as true of today's code.
 
-1. the relevant **call-tree section** (indented tree of
-   `file :: function → what it calls`, annotated with what each hop does),
-2. the **Key files** table, and
-3. the **end-to-end trace** at the bottom, if the main path changed.
+**Updating = re-trace and replace.** When a change alters how execution
+travels (a new endpoint/page/job, a new or removed call in a path, a moved
+function, a new provider), open the affected `## Flow:` section, re-read the
+code path, and **rewrite that block so it matches the code**. Delete nodes
+for deleted code. Never append a note explaining what changed.
 
-Tag every edited spot inline with `[CHANGED: <area>]`, where `<area>` is a
-short slug for the piece of work (e.g. `[CHANGED: auth]`). The tags let a
-reader diff the system's evolution at a glance; rationale for the change
-belongs in `decisions.md`, not here. Keep the document **whole-system, not
-session-scoped**: it describes how the entire codebase executes today, with
-recent edits tagged — it is not a changelog. If you add or rename a module or
-function that appears in the doc, fix its node.
+**Banned in flow.md** — each of these is how the legacy format rotted:
+- `[CHANGED: …]`, `[NEW]`, `[REMOVED]` or any other change tag
+- dates, and history words: *was, previously, no longer, used to, old,
+  supersedes, removed, deleted, now (as in "now does X")*
+- rationale ("because…", "deliberately…", "so that…") → `decisions.md`
+- bugs, caveats, dead code, TODOs → `todo.md`
+
+**The format** (the viewer parses it, so stick to it exactly):
+
+````markdown
+# Execution Flow — <Project>
+
+## Overview
+```components
+Browser -> API : REST
+API -> Postgres : SQL
+```
+
+## Flow: Checkout {#checkout}
+Trigger: user clicks "Pay" on /cart
+
+```flow
+web/src/cart/CartPage.tsx :: onPay()  — validate cart, show spinner
+  web/src/lib/api.ts :: createOrder(cart)
+    => POST /api/orders
+      api/routes/orders.py :: create_order()
+        api/services/pricing.py :: price_cart()
+        [if coupon] apply_coupon()  — discount line items
+        @payment
+        db: INSERT orders
+        ~ api/jobs/email.py :: send_receipt()
+  [if API error] showToast()
+```
+
+## Key files
+| Concern | Files |
+|---|---|
+| Orders API | `api/routes/orders.py`, `api/services/pricing.py` |
+````
+
+Grammar:
+- **One call per line; 2-space indent = "calls", in source order.**
+- `path :: symbol` — a call. A bare `symbol()` means "in the parent's file".
+- ` — note` after a node (≤ 80 chars): *what* the hop does, never *why*.
+- `=> METHOD /path`, `=> WS /path` — a process / network boundary.
+- `db:` `ext:` `cache:` `queue:` `fs:` `env:` `log:` — side-effect leaves.
+- `→ value` — what the step returns or responds with (`→ 401`, `→ None`).
+- `[if cond]` / `[else]` — branch; `~` — async / background work.
+- `@flow-id` — "continues in that flow" (each flow has a `{#id}`).
+- `# …` at the end of a line is a comment the viewer ignores.
+
+Shape and budgets:
+- `## Overview` holds one ` ```components ` block (`A -> B : label`, `<->`
+  for two-way) for the big picture, plus at most two sentences.
+- One `## Flow:` section per entry point or user-visible action, each with a
+  `Trigger:` line. **≤ 40 lines per flow block** — past that, move a stable
+  sub-path into its own flow and reference it with `@id`. Shared paths (auth,
+  the core engine) belong in one flow that others `@` reference, not copied.
+- `## Key files` is a lookup table: ≤ 3 paths per row, no prose.
+- **≤ ~400 lines for the whole file.** If it's over, cut notes before cutting
+  flows — notes are where bloat hides.
+- Trace the paths that matter (entry points, cross-module calls, boundaries,
+  side effects); skip trivial helpers and getters.
+
+Before ending the turn, check the touched flows' `Trigger`, `@refs` and Key
+files rows still hold, and fix anything stale you notice elsewhere —
+staleness discovered is staleness to repair. The viewer's **Lint** page
+checks the budgets, banned wording and broken `@refs`.
 
 ### `brain/todo.md` — action items, caveats, ideas
 
@@ -157,7 +274,8 @@ function that appears in the doc, fix its node.
 
 One piece of work often touches all three: if a task fixes a caveat listed in
 `todo.md` **and** embodies a decision, then check it off in `todo.md`, log
-the reasoning in `decisions.md`, and re-trace the affected path in `flow.md`.
+the reasoning in `decisions.md`, and re-trace the affected path in `flow.md`
+(replacing the block — the *why* and the *before* go in `decisions.md` only).
 Ask "which of the three does this change concern?" every time — the honest
 answer is frequently "more than one".
 
@@ -170,4 +288,5 @@ open?" in a project with a `brain/` folder, read the relevant doc
 (`decisions.md` / `flow.md` / `todo.md`) before answering from the code
 alone — the docs carry the reasoning and history the code can't show.
 If the docs turn out to be stale relative to the code, say so and fix them:
-staleness discovered is staleness to repair.
+staleness discovered is staleness to repair. If the user wants to *see* the
+flow, point them at `brain/flow-viewer.html`.

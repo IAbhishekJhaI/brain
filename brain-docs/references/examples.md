@@ -42,45 +42,80 @@ fixing a typo — gets **no entry**. The bar: would a future maintainer ask
 
 ---
 
-## 2. A `flow.md` call-tree section (with `[CHANGED]` tags)
+## 2. A `flow.md` flow section
 
-The tree shows *what calls what*, annotated with what each hop does. The
-`[CHANGED: auth]` tags mark where a piece of work touched the flow — a reader
-can grep the tag to see that work's whole footprint. The doc always describes
-the **current** system; the tags are breadcrumbs, not a changelog.
+One `## Flow:` per entry point, a `Trigger:` line, and a ` ```flow ` block:
+one call per line, indentation = "calls", short notes saying *what* each hop
+does. Shared paths are their own flow, referenced with `@id` rather than
+copied into every caller. Nothing in it says when or why anything changed.
 
 ````markdown
-## 3. Auth: verify → resolve → provision
+## Flow: Authenticated request {#auth}
 
-Applies to any endpoint depending on `get_current_user_id`.
+Trigger: any API route that depends on `get_current_user_id`
 
-```
-FRONTEND token attachment
-  src/app/layout.tsx
-    └─ <AuthProvider>            [CHANGED: auth]
-         └─ <AuthTokenBridge/>   getToken → api.setAuthTokenGetter
-  src/lib/api.ts :: request()    [CHANGED: auth] await tokenGetter()
-                                 → Bearer header (guest → none)
-
-BACKEND
-  app/api/deps.py :: get_current_user_id(db, authorization)
-    ├─ no header   → None (guest)
-    ├─ bad scheme  → 401
-    ├─ claims = verify_token(token)     # core/auth.py [NEW]
-    │     JWKS cache → jwt.decode(RS256, issuer, exp/nbf)
-    └─ get_or_create_user(db, claims):
-         SELECT user WHERE external_id == sub ; else INSERT ; commit
-         → internal user id (UUID)
+```flow
+web/src/lib/api.ts :: request()  — attach Bearer token if signed in
+  tokenGetter()  — Clerk session token; guests send none
+  => any /v1/* route
+    app/api/deps.py :: get_current_user_id(db, authorization)
+      [if no header] → None  — guest
+      [if bad scheme] → 401
+      app/core/auth.py :: verify_token(token)  — RS256 via cached JWKS
+        cache: jwks
+        [if cache miss] ext: Clerk JWKS endpoint
+      app/services/users.py :: get_or_create_user(db, claims)
+        db: SELECT users WHERE external_id = sub
+        [if missing] db: INSERT users
 ```
 ````
 
-And the Key-files table row that goes with it:
+And its Key-files row — paths only:
 
 ```markdown
-| Concern | File |
+| Concern | Files |
 |---|---|
-| Auth | `app/api/deps.py`, `app/core/auth.py` [NEW] |
+| Auth | `app/api/deps.py`, `app/core/auth.py`, `web/src/lib/api.ts` |
 ```
+
+### Bad → good: how a flow.md rots
+
+This node is from a real project's legacy flow.md (lightly trimmed). It is
+one middleware hop that grew to 17 lines:
+
+```
+  ├─ RateLimitMiddleware   → app/core/rate_limit.py   ← INSIDE CORS
+  │     [CHANGED: rate-limit] per-IDENTITY, COST-WEIGHTED two-bucket WEIGHTED
+  │       SLIDING window (the old one was a fixed bucket mislabelled "sliding" —
+  │       it allowed a 2x burst across the minute boundary). One atomic EVALSHA
+  │       does read + decide + INCRBY + TTL, so no counter can be left immortal
+  │       (the old INCR-then-EXPIRE could). Budget = RATE_LIMIT_PER_MINUTE cost
+  │       units (default 240); COSTS table: POST /v1/itineraries 60, PATCH 30, …
+  │       [CHANGED: cache-resilience] FAILS OPEN (allow + log) if Upstash is
+  │         down — a limiter sits in front of EVERY request, so a Redis outage
+  │         must not 500 the API. [CHANGED: rate-limit] the except now also
+  │         covers ValueError/OSError, so a blank REDIS_URL fails open too …
+```
+
+What went wrong: change tags that never get cleared, the *old* behaviour
+described next to the new, rationale ("so that…", "must not…"), and
+configuration detail that belongs in code comments. The same hop, current
+state only:
+
+```flow
+app/core/rate_limit.py :: RateLimitMiddleware  — cost-weighted sliding window per client IP
+  cache: EVALSHA rate-limit script  — read + decide + increment, atomic
+  [if Redis unavailable] log: fail open
+  [if over budget] → 429 + Retry-After
+```
+
+Everything that was cut still has a home:
+- **Why** sliding-window, why fail-open, why atomic Lua → `decisions.md`
+  (one D/W/A/T entry each, with the rejected fixed-bucket design under **A**).
+- **The cost table and default budget** → the code (`COSTS` in
+  `rate_limit.py`); flow.md points at the file, it doesn't mirror config.
+- **"A blank `REDIS_URL` also fails open"** → `todo.md` as a 🟡 known
+  limitation if it's worth remembering.
 
 ---
 

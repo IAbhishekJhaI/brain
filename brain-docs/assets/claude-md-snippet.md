@@ -13,8 +13,8 @@ skill.
 The `brain/` folder is the living memory of this project. **Whenever you
 change or write code, or learn something worth keeping, update these three
 files before you end your turn.** If a file is missing, recreate it (the
-`brain-docs` skill has the templates). Match the existing structure and tone
-in each file.
+`brain-docs` skill has the templates and the viewer). Match the existing
+structure and tone in each file.
 
 Update them **incrementally as you work**, not only when asked. These docs
 are relied on to survive across chat sessions.
@@ -27,13 +27,19 @@ rejected, mid-implementation reversals. Use the **D / W / A / T** format
 mechanical edits; capture anything a future maintainer would ask "why?"
 about. Don't relitigate decisions already settled here.
 
-### `brain/flow.md` — whole-system execution flow
-When a change alters how execution travels (new endpoint, new call in a
-path, a stage's inputs/outputs, a provider, a frontend data path), update the
-relevant call-tree section, the **Key files** table, and the end-to-end
-trace. Tag edited spots inline with `[CHANGED: <area>]`. Keep it
-whole-system, not session-scoped. If you add/rename a module or function,
-fix its node here.
+### `brain/flow.md` — snapshot of the CURRENT code
+flow.md says how the code executes **today** — it is not a changelog. When a
+change alters how execution travels (new endpoint/page/job, a call added or
+removed, a function moved), **re-trace that `## Flow:` section from the code
+and replace its block**; delete nodes for deleted code.
+- **Never** write `[CHANGED]`/`[NEW]` tags, dates, or history wording
+  ("was", "previously", "no longer", "supersedes", "removed"). The *why* and
+  the *before* go in `decisions.md`; caveats and dead code go in `todo.md`.
+- Keep the parseable format (` ```flow ` blocks: one call per line,
+  `path :: symbol  — note`, 2-space indent = calls; `=>` boundary, `db:`/`ext:`
+  side effects, `→` result, `[if …]`, `~` async, `@flow-id` refs). Notes ≤ 80 chars and
+  say *what*, not *why*. Flows ≤ 40 lines, file ≤ ~400 lines.
+- `brain/flow-viewer.html` renders it; its Lint page flags violations.
 
 ### `brain/todo.md` — action items, caveats, ideas
 - **Add** anything that surfaces: correctness/security risks noticed while
@@ -48,4 +54,4 @@ fix its node here.
 
 > If a task both fixes a caveat listed here **and** embodies a decision,
 > update all three: check it off in `todo.md`, log the reasoning in
-> `decisions.md`, and re-trace it in `flow.md`.
+> `decisions.md`, and re-trace it in `flow.md` (replace, don't annotate).

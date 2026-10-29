@@ -1,61 +1,46 @@
-# Execution Flow — Whole System
+# Execution Flow — <Project>
 
-> **Maintenance:** when a change alters how execution travels, update the
-> relevant call-tree, the Key-files table, and the end-to-end trace; tag
-> edits inline with `[CHANGED: <area>]`. Keep it whole-system, every session.
+> **Snapshot of the CURRENT code — not a changelog.** When code changes,
+> re-trace the affected flow and replace its block. No `[CHANGED]` tags, dates,
+> or "was / no longer / supersedes" wording; rationale goes in `decisions.md`.
+> Notes ≤ 80 chars, flows ≤ 40 lines, file ≤ 400 lines. View it with
+> `flow-viewer.html` (same folder).
 
-How execution actually travels through this project: what calls what, in what
-order, across files, modules, and process boundaries. Covers the entire
-codebase, not just recent edits — recent work is tagged inline with
-`[CHANGED: <area>]` (the *rationale* for those changes lives in
-`decisions.md`).
+## Overview
 
----
-
-## 0. The big picture
-
-<!-- One diagram or short paragraph: the major components and how they talk.
-     ASCII boxes work well:
-
-     Client ──▶ API Gateway ──▶ Service A ──▶ Database
-                     └────────▶ Service B ──▶ External API
--->
-
----
-
-## 1. <Primary flow name — e.g. "Request handling", "Main pipeline">
-
-<!-- An indented call tree, annotated. Example shape:
-
-```
-src/server.ts :: main()
-  ├─ loadConfig()            (src/config.ts — env + defaults)
-  ├─ createApp()
-  │    ├─ registerMiddleware()   auth → rate-limit → logging
-  │    └─ registerRoutes()       → src/routes/*.ts
-  └─ listen(PORT)
+<!-- One edge per line: `A -> B : label`  (`<->` for two-way). -->
+```components
+Client -> API : HTTP
+API -> Service : call
+Service -> Database : SQL
 ```
 
-Add one numbered section per distinct flow (startup, request path, background
-jobs, data sync, frontend data path, …). -->
+<!-- One or two sentences on the architecture, if the diagram needs it. -->
 
----
+## Flow: <Primary flow name> {#primary}
 
-## Key files quick-reference
+Trigger: <what starts it — a user action, an endpoint, a cron, a CLI command>
 
-| Concern | File |
+<!-- Grammar (one call per line, 2-space indent = "calls", in source order):
+       path/to/file :: symbol()  — what this hop does   ← call
+       helper()                                         ← call in the parent's file
+       => POST /api/thing                               ← process/network boundary
+       db: INSERT orders  /  ext: Stripe charge         ← side effect (db ext cache queue fs env log)
+       → 401                                            ← returns / responds with
+       [if cond] … / [else] …                           ← branch
+       ~ …                                              ← async / background
+       @other-flow-id                                   ← continues in another flow
+       … # comment                                      ← ignored by the viewer -->
+```flow
+src/server.ts :: main()  — boot the app
+  src/config.ts :: loadConfig()  — env + defaults
+  src/app.ts :: createApp()
+    registerRoutes()  — mounts src/routes/*
+  listen(PORT)
+```
+
+## Key files
+
+| Concern | Files |
 |---|---|
-| <!-- e.g. Entry point --> | <!-- e.g. `src/server.ts` --> |
-
----
-
-## End-to-end trace
-
-<!-- The single most important user action, traced start to finish in one
-     compact block:
-
-```
-User clicks X → frontend calls POST /api/y → handler validates →
-service does Z → DB write → response → UI updates
-```
--->
+| Entry point | `src/server.ts` |
