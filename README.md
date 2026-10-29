@@ -70,7 +70,7 @@ it, and nobody could trust it.
 The rule now: **flow.md describes only the code as it runs today.** Changing
 code means re-tracing the affected flow and replacing its block. History
 already has homes: `decisions.md` (the *why* and the *before*) and git.
-Budgets (≤ 80-char notes, ≤ 40-line flows, ≤ ~400-line file) keep it
+Budgets (≤ 80-char notes, ≤ 40-line flows) keep it
 readable, and the viewer's lint page flags anything that slips.
 
 ### The D/W/A/T format

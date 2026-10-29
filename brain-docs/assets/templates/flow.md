@@ -3,7 +3,7 @@
 > **Snapshot of the CURRENT code — not a changelog.** When code changes,
 > re-trace the affected flow and replace its block. No `[CHANGED]` tags, dates,
 > or "was / no longer / supersedes" wording; rationale goes in `decisions.md`.
-> Notes ≤ 80 chars, flows ≤ 40 lines, file ≤ 400 lines. View it with
+> Notes ≤ 80 chars, flows ≤ 40 lines. View it with
 > `flow-viewer.html` (same folder).
 
 ## Overview

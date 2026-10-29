@@ -189,7 +189,7 @@ section#details[hidden] { display: none; }
 'use strict';
 
 // ---------------------------------------------------------------- constants
-const LIMITS = { note: 80, flowLines: 40, fileLines: 400, keyPaths: 3, keyRowChars: 160 };
+const LIMITS = { note: 80, flowLines: 40, keyPaths: 3, keyRowChars: 160 };
 const HISTORY_RE = /\[(?:CHANGED|NEW|REMOVED|DEPRECATED)\b[^\]]*\]|\b(?:previously|no longer|supersede[sd]?|formerly|used to|was|were|old|deleted|removed)\b|\b20\d\d-\d\d-\d\d\b/i;
 const LEGACY_RE = /\[(?:CHANGED|NEW)\b[^\]]*\]/g;
 const EFFECTS = ['db', 'ext', 'cache', 'queue', 'fs', 'env', 'log'];
@@ -426,7 +426,6 @@ function parseDoc(text) {
     doc.legacy = true;
     lint('error', 'No "## Flow:" sections with ```flow blocks — this looks like the old format. Ask Claude to "upgrade the brain flow doc".', 1);
   }
-  if (doc.lineCount > LIMITS.fileLines) lint('warn', `flow.md is ${doc.lineCount} lines (target ≤ ${LIMITS.fileLines}) — trim notes, split or merge flows`, 1);
   for (const o of doc.other) lint('info', `Section "${o.title}" is not part of the flow format (shown as text on Overview)`, o.line);
   const rank = { error: 0, warn: 1, info: 2 };
   doc.lint.sort((a, b) => rank[a.sev] - rank[b.sev] || a.line - b.line);
@@ -942,7 +941,7 @@ function renderFiles() {
 function renderLint() {
   const d = S.doc;
   const wrap = h('div', null, h('h2', null, 'Lint'),
-    h('p', { class: 'sub' }, `Checks flow.md against the brain-docs format: current state only, notes ≤ ${LIMITS.note} chars, flows ≤ ${LIMITS.flowLines} lines, file ≤ ${LIMITS.fileLines} lines, valid @refs.`));
+    h('p', { class: 'sub' }, `Checks flow.md against the brain-docs format: current state only, notes ≤ ${LIMITS.note} chars, flows ≤ ${LIMITS.flowLines} lines, valid @refs.`));
   if (!d.lint.length) { wrap.append(h('p', null, '✓ No issues.')); return wrap; }
   wrap.append(h('ul', { class: 'lint' }, d.lint.map(l => h('li', null, h('span', { class: 'sev ' + l.sev }, l.sev), h('span', null, l.msg), h('span', { class: 'ln' }, 'line ' + l.line)))));
   return wrap;

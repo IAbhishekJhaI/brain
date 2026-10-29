@@ -38,7 +38,7 @@ and replace its block**; delete nodes for deleted code.
 - Keep the parseable format (` ```flow ` blocks: one call per line,
   `path :: symbol  — note`, 2-space indent = calls; `=>` boundary, `db:`/`ext:`
   side effects, `→` result, `[if …]`, `~` async, `@flow-id` refs). Notes ≤ 80 chars and
-  say *what*, not *why*. Flows ≤ 40 lines, file ≤ ~400 lines.
+  say *what*, not *why*. Flows ≤ 40 lines.
 - `brain/flow-viewer.html` renders it; its Lint page flags violations.
 
 ### `brain/todo.md` — action items, caveats, ideas

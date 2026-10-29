@@ -230,8 +230,8 @@ Shape and budgets:
   sub-path into its own flow and reference it with `@id`. Shared paths (auth,
   the core engine) belong in one flow that others `@` reference, not copied.
 - `## Key files` is a lookup table: ≤ 3 paths per row, no prose.
-- **≤ ~400 lines for the whole file.** If it's over, cut notes before cutting
-  flows — notes are where bloat hides.
+- **No cap on total file length** — let it grow with the project. Keep each
+  flow tight instead: cut bloated notes before splitting flows.
 - Trace the paths that matter (entry points, cross-module calls, boundaries,
   side effects); skip trivial helpers and getters.
 
