@@ -60,6 +60,12 @@ the code into the current format, moves any rationale it finds into
 `flow.old.md` until you delete it. Trigger it with *"upgrade the brain flow
 doc"*.
 
+**Team mode** — for a repo where 10-15 people commit and a few of them use
+the brain. Decisions become one file each (so brain users never collide),
+and the brain accounts for **every commit on the main branch**, including
+the ones from teammates who have never heard of it. See
+[Team mode](#team-mode) below.
+
 ### Why flow.md is a snapshot, not a log
 
 Earlier versions tagged every edit `[CHANGED: <area>]` and never removed the
@@ -193,6 +199,68 @@ The three files answer three questions:
 - **`brain/flow.md`** → *"What calls what, in what order?"* (current-state call trees)
 - **`brain/todo.md`** → *"What's broken / limited / worth doing?"* (grouped by topic, 🔴🟠🟡🟢🔵 tagged; completed items move to an optional `brain/archive.md`)
 
+## Team mode
+
+A solo brain assumes one person and one agent. On a team that breaks three
+ways: most commits come from people who don't use the brain, so `flow.md`
+goes stale and nothing records why; two people prepending to one
+`decisions.md` conflict on every merge; and no entry says which commit it
+explains.
+
+Team mode fixes those for the people who use the brain, **without asking
+anyone else to change anything**. No commit trailers, no hooks, no CI. Say
+*"set up a team brain"* (or *"switch the brain to team mode"* in a repo that
+already has a solo one).
+
+```
+brain/
+├── brain.json           branch + baseline commit
+├── decisions/           one file per decision, with author / commits / PR
+├── ledger/              commits that need no decision entry
+├── tools/brain.py       helper script (Python 3, standard library only)
+└── flow.md  todo.md  flow-viewer.html
+```
+
+- **One file per decision.** `brain/decisions/2026-11-04-pricing-tiers.md`
+  holds the usual D/W/A/T plus frontmatter: `author` (who did the work),
+  `area`, `commits`, `pr`, `source` and `status`. Nobody edits anyone
+  else's file, so there is nothing to conflict on.
+- **Every commit is covered.** A commit on main is covered when a decision
+  entry lists it or the ledger has a row for it. Merges and brain-only
+  commits are covered automatically. The ledger is split by month and by
+  who recorded the rows, so two people syncing the same week still don't
+  touch the same file.
+- **Sync** (*"sync the brain"*) absorbs teammates' commits: mechanical ones
+  are recorded unread, real decisions become entries marked
+  `source: inferred`, the rest get a ledger row, and every flow whose files
+  changed is re-traced. Claude checks for unsynced commits at the start of
+  each session.
+- **No invented reasons.** For someone else's commit, the entry may only
+  say what the commit, PR or code says. Where they are silent it says
+  `not stated` and a todo asks the author.
+- **Backfill** (*"backfill the brain from git history"*) does the same for
+  history older than the brain. It reads a lot and costs a lot of tokens,
+  so it runs only on request, after showing the commit count and agreeing a
+  scope (last N commits, since a date, or one path).
+
+The script does the bookkeeping so the agent doesn't spend tokens on it:
+
+| Command | Does |
+|---|---|
+| `python brain/tools/brain.py pending` | commits the brain doesn't explain yet, grouped by PR |
+| `… pending --count` | just the number |
+| `… ledger auto` | record the obviously mechanical ones (lockfiles, formatting, docs) |
+| `… ledger add <sha> --area api --what "…"` | record a commit that needs no entry |
+| `… impact` | flows in `flow.md` touched by the changed files |
+| `… find --path api/pricing.py` | entries about a file (also `--sha`, `--area`, `--author`, `--text`) |
+| `… index` | rebuild the git-ignored `decisions-index.md` |
+| `… init` / `… migrate` | start a team brain / split a solo `decisions.md` |
+
+`brain/` is committed in team mode; that is how the brain users share it.
+The standing rule can go in the shared `CLAUDE.md` (every teammate's Claude
+keeps the brain up) or in each brain user's `CLAUDE.local.md` (only the
+people who opted in).
+
 ## The flow.md format
 
 Plain markdown that reads fine on GitHub, with fenced blocks the viewer
@@ -287,9 +355,11 @@ What you get:
 brain-docs/            ← the skill (copy/package this folder)
 ├── SKILL.md           ← the instructions Claude follows
 ├── assets/
-│   ├── templates/     ← seeds for decisions.md, flow.md, todo.md
+│   ├── templates/     ← seeds for decisions.md, flow.md, todo.md, team decision entries
 │   ├── viewer/
 │   │   └── flow-viewer.html  ← the visualizer copied into brain/
+│   ├── tools/
+│   │   └── brain.py   ← team-mode helper copied into brain/tools/
 │   └── claude-md-snippet.md  ← the standing rule for your CLAUDE.md
 └── references/
     └── examples.md    ← worked examples of each format

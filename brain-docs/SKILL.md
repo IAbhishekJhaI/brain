@@ -12,7 +12,8 @@ description: >-
   when a risk/limitation/idea surfaces worth writing down, when the user
   asks why a past decision was made (read decisions.md before answering),
   when they want to see or visualize the code flow, or when they ask to
-  "upgrade the brain flow doc" / clean up an unreadable flow.md.
+  "upgrade the brain flow doc". Team use too: "sync the brain" with
+  teammates' commits, "why was this commit made", "backfill the brain".
 ---
 
 # brain-docs — a living project memory
@@ -45,6 +46,10 @@ There are three modes. Check the project root:
   legacy file.
 - **Otherwise `brain/` exists → Maintain mode.**
 
+A brain is either **solo** (one `decisions.md`, described first) or **team**
+(`brain/decisions/` exists). In a team brain, read "Team mode" below as well:
+it changes how decisions are stored and adds **Sync** and **Backfill**.
+
 ---
 
 ## Setup mode
@@ -54,7 +59,11 @@ There are three modes. Check the project root:
    to the project's name; keep the maintenance blockquotes — they remind
    future sessions of the rules even if this skill doesn't load.
 
-2. **Ask whether `brain/` should be git-ignored.** Don't assume — this is a
+2. **Ask who the brain is for: solo or team.** If several people work in the
+   repo and more than one of them will use the brain, set up a team brain:
+   follow "Team mode → Team setup" after these steps (it is always
+   committed, so skip the question below). Otherwise it is a solo brain:
+   **ask whether `brain/` should be git-ignored.** Don't assume — this is a
    real tradeoff the user owns:
    - *Git-ignored (local)*: the notes can be candid — honest tradeoffs,
      "this is a hack", API-billing gripes — because nobody else reads them.
@@ -325,12 +334,196 @@ answer is frequently "more than one".
 
 ---
 
+## Team mode
+
+For a repo where several people commit and a few of them (often 2-3 of 10-15)
+use the brain. Two things change. Decisions are stored so that brain users
+never collide. And the brain accounts for **every commit on the main branch**,
+including the ones written by teammates who have never heard of it.
+
+**Nobody outside the brain users has to do anything.** No commit trailers, no
+hooks, no CI. All linkage lives inside `brain/`. Never ask a teammate to
+change how they commit, and never add tooling that runs for them.
+
+### Layout
+
+```
+brain/
+├── brain.json           branch + baseline commit (written once, never edited)
+├── decisions/           one file per decision
+├── ledger/              commits that need no decision entry
+├── decisions-index.md   generated, git-ignored
+├── tools/brain.py       the helper script
+├── flow.md  todo.md  archive.md  flow-viewer.html      (as in solo mode)
+```
+
+There is no `brain/decisions.md` in a team brain; don't recreate it when
+Maintain mode says to restore missing files.
+
+### Decision entries
+
+One file per decision: `brain/decisions/YYYY-MM-DD-short-slug.md`, from
+`assets/templates/decision-entry.md`. The body is the same D/W/A/T. The
+frontmatter is what makes it a team record:
+
+- `author`: who did the **work** (the commit author), not who wrote the entry.
+- `area`: one word, matching a `flow.md` layer or a `todo.md` topic.
+- `commits`: SHAs on the main branch this entry explains. Empty until landed.
+- `pr`: the pull request number, if any.
+- `source`: `session` (written while doing the work), `inferred` (written
+  later from someone else's commits), or `backfill`.
+- `status`: `active`, or `superseded-by: <entry-id>` when a later entry
+  reverses it. Supersede, don't delete: the old reasoning is still history.
+
+Never append to someone else's entry. A new decision is a new file.
+
+### The ledger and coverage
+
+A commit is **covered** when its SHA is in an entry's `commits:` or in a
+ledger row. Merge commits and commits that only touch `brain/` are covered
+automatically. Everything on the main branch after the baseline should be
+covered; `pending` lists what isn't.
+
+Ledger rows are for commits that are real but don't embody a decision
+(`minor`) or carry no meaning at all (`mechanical`). They live in
+`brain/ledger/YYYY-MM.<your-handle>.md`: sharded by month and by who recorded
+them, so two people syncing at once never edit the same file. Add rows with
+the script, not by hand, so the shard and format stay right.
+
+### The script
+
+`python brain/tools/brain.py <command>` (standard library only; it reads git
+and writes only inside `brain/`):
+
+| Command | Use |
+|---|---|
+| `pending [--count]` | uncovered commits since the baseline, as a digest grouped by PR |
+| `ledger auto` | record the commits `pending` marked `[mechanical? …]`, unread |
+| `ledger add <sha…> --area X --what "…" [--kind mechanical]` | record commits that need no entry |
+| `impact [A..B \| sha]` | flows in `flow.md` touched by the changed files (default: all uncovered commits) |
+| `find --area/--author/--sha/--path/--text/--source` | look up entries and ledger rows |
+| `index` | rebuild `decisions-index.md` and report likely duplicate entries |
+| `init`, `migrate` | setup and solo → team conversion |
+
+`pending` and `ledger auto` take `--range A..B`, `--since DATE`, `--last N`,
+`--all` and `--path P` to look outside the default baseline-to-main range.
+
+If `brain/tools/brain.py` is missing, or its `# brain-docs-tools: N` line is
+lower than the copy in this skill's `assets/tools/`, copy the skill's version
+over it. If Python isn't available, do the same job by hand: list commits
+with `git log --reverse --date=short --stat <baseline>..<branch>` (the
+baseline is in `brain/brain.json`) and treat a commit as covered when its
+short SHA appears anywhere under `brain/decisions/` or `brain/ledger/`.
+
+### Your own work
+
+Work as in Maintain mode, with one difference: a meaningful decision becomes
+a new file in `brain/decisions/` with `source: session` and `commits: []`
+(the final SHAs don't exist until the work lands, and squash merges rewrite
+them). Put the PR number in `pr:` once there is one. When the work reaches
+the main branch it shows up in `pending`; add its SHAs to the entry you
+already wrote. Don't write a second entry for it.
+
+### Sync mode — absorbing everyone else's commits
+
+Run it when the user says "sync the brain" (or similar), and at the start of
+a session when `pending --count` is above zero: sync straight away if it is
+10 or fewer, otherwise tell the user the number and offer. Sync works on the
+local main branch, so check it is up to date first (ask before pulling).
+
+1. **Read the digest:** `brain.py pending`. It prints up to 40 commits,
+   oldest first; work in batches rather than loading a huge backlog.
+2. **Clear the mechanical ones unread:** `brain.py ledger auto`.
+3. **Link your own:** for commits that belong to an existing `session` entry
+   (match by PR number, author and files), add the SHAs to its `commits:`.
+4. **Triage the rest, one PR/group at a time.** The commit message is in the
+   digest. If `gh` is installed and authenticated, `gh pr view <n>` gives the
+   PR description and review discussion, which is usually where the *why*
+   is. Open the diff (`git show <sha>`) only when the message is too thin to
+   classify or the commit touches a traced flow.
+   - It embodies a decision (new dependency, changed approach, a reversal,
+     a new boundary, a revert of real work) → write an entry with
+     `source: inferred`, `author:` the commit author, and the SHAs.
+   - Otherwise → `brain.py ledger add`.
+5. **Don't invent reasons.** You weren't there. **W**, **A** and **T** may
+   only say what the commit message, PR, linked issue or code comments say.
+   Where they are silent, write `not stated` and add a 🟡 todo
+   "Confirm why … with @author" pointing at the entry. A wrong reason in the
+   log is worse than a missing one, because later sessions will trust it.
+6. **Repair the flow:** `brain.py impact` lists the flows whose traced files
+   changed, deleted or renamed paths in Key files, and changed files that no
+   flow mentions. Re-trace the listed flows from the code (replace the
+   block, as always). For untraced files, add a flow only if they introduce
+   an entry point or a cross-module path worth tracing.
+7. **Carry over caveats:** risks or limitations you notice while reading go
+   to `todo.md`, tagged `(sync)` and, when you know who owns it, `@handle`.
+8. **Finish:** `brain.py index`, then `brain.py pending --count` should
+   print 0 (or the size of the backlog you agreed to leave). If `index`
+   reports a possible duplicate (two inferred entries for one commit, which
+   happens when two people sync the same week), merge them into one file.
+   Tell the user what was added. The brain changes are theirs to commit; a
+   commit that touches only `brain/` never shows up as pending.
+
+### Backfill mode — history from before the brain
+
+Same procedure as Sync, over history older than the baseline, with
+`source: backfill`. Run it only when asked, and never without scoping it:
+
+1. Get the size: `brain.py pending --all --count`.
+2. **Warn before starting:** backfilling reads a lot of history and consumes
+   a lot of tokens, and reasons recovered from old commits are less reliable
+   than ones written at the time. Give the count.
+3. Agree a scope: the last N commits (`--last 200`), since a date
+   (`--since 2026-01-01`), or one area (`--all --path api/payments`). A
+   scoped backfill of the areas people still ask about beats a full one.
+4. Sync that range, passing the same scope flags to `pending` and
+   `ledger auto`. Be stricter than in a live sync: only write entries for
+   decisions still visible in today's code, and ledger the rest.
+5. Anything left unbackfilled stays uncovered and that is fine; it is
+   outside the baseline, so the default `pending` never reports it.
+
+### Team setup
+
+After steps 1-6 of Setup mode (seed `flow.md`, `todo.md`, the viewer; do not
+seed `decisions.md`):
+
+1. Copy `assets/tools/brain.py` to `brain/tools/brain.py` and run
+   `python brain/tools/brain.py init`. It records the main branch and the
+   current tip as the baseline, and creates `decisions/`, `ledger/` and a
+   `brain/.gitignore` for the generated index.
+2. **Ask where the standing rule goes.** The shared `CLAUDE.md` makes every
+   teammate's Claude sessions maintain the brain too. `CLAUDE.local.md`
+   (personal, git-ignored) keeps it to the people who opted in; each brain
+   user adds it to their own. When only a few people on the team use the
+   brain, recommend `CLAUDE.local.md`. Install the **team** block from
+   `assets/claude-md-snippet.md`.
+3. **Offer a backfill, with the warning** from Backfill mode and the commit
+   count `init` printed. Default to skipping it; the user can ask later.
+4. `brain/` must be committed (that is how the brain users share it), so
+   write for an audience: teammates can read every entry about their work.
+
+### Solo → team
+
+When the user asks to switch an existing solo brain: confirm `brain/` is (or
+will be) committed, copy the script in, then run `brain.py migrate` followed
+by `brain.py init`. `migrate` splits `decisions.md` into one file per entry
+and keeps the original as `brain/decisions.solo.md`; check the entry count
+it reports, set each entry's `area:` (they all start as `general`), then
+delete the backup. Replace the standing-rule block with the team variant and
+log the switch as a decision.
+
+---
+
 ## Answering from the brain
 
 When the user asks "why did we do X?", "how does Y work?", or "what's still
 open?" in a project with a `brain/` folder, read the relevant doc
 (`decisions.md` / `flow.md` / `todo.md`) before answering from the code
 alone — the docs carry the reasoning and history the code can't show.
+In a team brain, don't read every entry: use `brain.py find` (`--path` for
+"why is this file like this", `--sha` for "why was this commit made",
+`--area`, `--author`, `--text`) and open the files it lists. Say so when an
+answer rests on an `inferred` or `backfill` entry or a `not stated` line.
 If the docs turn out to be stale relative to the code, say so and fix them:
 staleness discovered is staleness to repair. If the user wants to *see* the
 flow, point them at `brain/flow-viewer.html`.

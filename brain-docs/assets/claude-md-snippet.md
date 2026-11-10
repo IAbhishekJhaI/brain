@@ -61,3 +61,41 @@ and replace its block**; delete nodes for deleted code.
 > If a task both fixes a caveat listed here **and** embodies a decision,
 > update all three: check it off in `todo.md`, log the reasoning in
 > `decisions.md`, and re-trace it in `flow.md` (replace, don't annotate).
+
+---
+
+# Team variant
+
+For a team brain (`brain/decisions/` exists), use the block above with its
+`brain/decisions.md` section **replaced** by the two sections below. Put the
+whole block in the shared `CLAUDE.md`, or in each brain user's
+`CLAUDE.local.md` when only some of the team uses the brain.
+
+---
+
+### `brain/decisions/` — one file per decision
+This is a team brain: there is no `decisions.md`. Write each meaningful
+decision as its own file, `brain/decisions/YYYY-MM-DD-short-slug.md`, with
+D / W / A / T in the body and this frontmatter: `date`, `author` (who did the
+work), `area`, `commits: []`, `pr`, `source: session`, `status: active`.
+Never edit a teammate's entry; to reverse one, write a new entry and set the
+old one's `status: superseded-by: <new-entry>`. Look entries up with
+`python brain/tools/brain.py find --path <file>` (or `--sha`, `--area`,
+`--author`, `--text`) rather than reading the folder.
+
+### Commit coverage — every commit on main is accounted for
+Most commits here come from teammates who don't use the brain. **They are
+never asked to do anything**: no trailers, hooks or CI.
+- **At session start** run `python brain/tools/brain.py pending --count`.
+  Above zero means commits have landed that the brain doesn't explain yet.
+  Sync right away if it is 10 or fewer; otherwise say the number and offer.
+- **To sync**, follow the `brain-docs` skill's Sync mode: `pending` for the
+  digest, `ledger auto` for mechanical commits, link your own landed commits
+  to the entries you already wrote, write `source: inferred` entries for
+  teammates' real decisions, `ledger add` for the rest, then `impact` and
+  re-trace the flows it lists, then `index`.
+- **Never invent a reason for someone else's commit.** If the commit, PR or
+  code doesn't say why, write `not stated` and add a todo to confirm with
+  the author.
+- Backfilling history older than the baseline is expensive in tokens: only
+  on request, after giving the commit count and agreeing a scope.

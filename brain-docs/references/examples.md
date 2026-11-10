@@ -161,3 +161,95 @@ When the token item above gets done, it becomes `- [x]` and **moves to
 `brain/archive.md`** (under the same "Deploy & ops" heading) so `todo.md`
 stays a list of open work. And if resolving it involved a real choice, that
 choice gets a `decisions.md` entry the same day.
+
+---
+
+## 4. Team mode: entries written from someone else's commits
+
+`brain.py pending` printed this for a teammate's PR:
+
+```
+== PR #212
+9c1e44a 2026-11-04  Priya Nair  Switch pricing to tiered discounts (#212)
+    | Flat discounts lost money on bulk orders.
+    | Chose tiers over per-customer rules: simpler to audit.
+    api/services/pricing.py  +84 -31
+    api/services/tiers.py  +120 -0
+```
+
+The message states the why and the rejected alternative, so the entry can
+too. It says nothing about what got worse, so **T** doesn't either.
+`brain/decisions/2026-11-04-pricing-tiered-discounts.md`:
+
+```markdown
+---
+date: 2026-11-04
+author: Priya Nair
+area: pricing
+commits: [9c1e44a]
+pr: 212
+source: inferred
+status: active
+---
+
+# Pricing: flat discount → tiered discounts
+
+- **D:** `price_cart()` in `api/services/pricing.py` now looks the discount
+  up by order size in the new `api/services/tiers.py` table instead of
+  applying one flat percentage.
+- **W:** Flat discounts lost money on bulk orders (commit message).
+- **A:** Per-customer rules, rejected as harder to audit (commit message).
+- **T:** not stated.
+```
+
+And the matching `todo.md` item, so the gap gets closed by the person who
+knows:
+
+```markdown
+- [ ] 🟡 **Confirm the tradeoff accepted in tiered discounts.** `(sync)`
+  `@priya` — PR #212 doesn't say what tiers cost us (e.g. the top tier's
+  margin). `brain/decisions/2026-11-04-pricing-tiered-discounts.md`.
+```
+
+### Bad → good: a reason nobody gave
+
+The commit was `c07d2b1 use redis for sessions`, with no body and no PR
+description. The tempting entry:
+
+```markdown
+- **W:** In-memory sessions didn't survive restarts and couldn't be shared
+  across instances, so Redis was chosen for horizontal scaling.
+- **A:** Rejected JWT sessions because they can't be revoked.
+```
+
+Every word of that is plausible and none of it is known. A later session
+will read it as fact and defend a JWT rejection that never happened. What
+the evidence supports:
+
+```markdown
+- **D:** Sessions moved from the in-process dict to Redis
+  (`app/core/session.py`, new `REDIS_URL` setting).
+- **W:** not stated.
+- **A:** not stated.
+- **T:** A Redis outage now logs every user out (`session.py` has no
+  fallback).
+```
+
+**D** and **T** come from reading the diff, so they are fair to write. The
+*why* isn't in the diff.
+
+### Ledger rows
+
+Commits that are real but carry no decision, recorded with
+`brain.py ledger add` / `ledger auto` in `brain/ledger/2026-11.asha.md`:
+
+```markdown
+| sha | date | author | area | what | kind |
+|---|---|---|---|---|---|
+| 69ffe3d348 | 2026-11-05 | Ben Li | lockfile | bump deps | mechanical |
+| 668dd5d55b | 2026-11-05 | Chidi Obi | api | rename email job to mailer | minor |
+| d91253c93d | 2026-11-06 | Dee Park | api | add Stripe webhook route | minor |
+```
+
+A rename and a new route are `minor`: they change `flow.md` (re-trace the
+flows `brain.py impact` lists) but nobody chose between alternatives.

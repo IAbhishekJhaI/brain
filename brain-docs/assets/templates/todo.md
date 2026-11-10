@@ -11,7 +11,9 @@ observations, and feature ideas that surfaced while working.
 
 Tags: 🔴 action-required · 🟠 correctness/security · 🟡 known limitation
 (by design) · 🟢 feature · 🔵 tech-debt. `(session)` = surfaced while
-working · `(roadmap)` = imported from a plan/handoff doc.
+working · `(roadmap)` = imported from a plan/handoff doc · `(sync)` = found
+while reading a teammate's commits. On a team, add `@handle` after the
+provenance tag when an item has an owner or someone to ask.
 
 A short list can stay flat. Once it grows, split it into **topic sections**
 like the examples below — the severity emoji rides on each item as a tag, so
