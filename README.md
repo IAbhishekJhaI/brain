@@ -1,6 +1,11 @@
 # brain-docs 🧠
 - **The brain of your project**
 
+Installation: paste this one line into Claude Code and it will do the setup for you:
+```text
+Read https://raw.githubusercontent.com/IAbhishekJhaI/brain/main/INSTALL-WITH-CLAUDE.md and follow it.
+```
+
 **A Claude skill that gives your project a memory that survives across chat sessions.**
 
 Chat sessions end. Context windows fill up. The reasoning behind your code —
@@ -305,42 +310,103 @@ shown in presentation mode), `| passes:` (the artefact handed on) and
 `| fails:` (real degradation behaviour) attach to the step above them. Full
 rules are in [`SKILL.md`](brain-docs/SKILL.md).
 
-## The visualizer
+## The flow viewer
 
-`brain/flow-viewer.html` ("Tracer") is one self-contained HTML file. It
-needs no build step. It loads the IBM Plex fonts from Google Fonts when
-online and falls back to system fonts offline. Otherwise it only reads
-`flow.md` and, when served, your source files.
+`brain/flow-viewer.html` turns `flow.md` into something you can
+click through. It is one self-contained HTML file: no build step, no
+install, works offline.
 
-- **Open it:** double-click it, click **Open flow.md** and pick the file (or
-  drag it onto the page). In Chrome and Edge the viewer remembers the file
-  and **live-reloads** whenever it changes, so you can keep it open while
-  Claude works. Other browsers load a static copy; press Open again to
-  refresh.
-- **Or serve the project root** for zero clicks and source excerpts: run
-  `python -m http.server` in the project root and open
-  `http://localhost:8000/brain/flow-viewer.html`. It auto-loads and
-  live-reloads `flow.md`.
+### Opening it
 
-What you get:
-- **Trace timeline** (the default for each flow): the flow drawn top to
-  bottom as numbered steps, each card in the swimlane of the layer that runs
-  it, grouped into phase bands. Step through it with `◀ ▶`, `←/→` or `j/k`;
-  jump phases with `[ ]`.
-- **Presentation mode** (`p`): cards show plain English instead of function
-  names. The layout doesn't move, so you can switch mid-walkthrough.
-- **Detail panel:** layer, file path, plain-English and technical
-  descriptions, **If it fails**, **Passes on**, side effects, a source
-  excerpt (when served from the project root), and **Calls / Called by**
-  chips that explore sideways without losing your place.
-- **Shareable links:** the URL keeps the flow, step, selection and
-  presentation mode.
-- **Jump to** (`⌘K` / `Ctrl-K` / `/`): search functions, files and
-  plain-English descriptions across every flow.
-- **Tree and Graph views** of the same flow, plus **Overview** (component
-  diagram, traces, layers), **Files** (every traced file and its flows) and
-  **Lint** (legacy tags, history wording, budgets, broken `@refs`, unknown
-  `|` keys, identifiers in plain English, steps that match no layer).
+| How | What you get |
+|---|---|
+| **Double-click it** (Chrome / Edge) | Click **Open flow.md** once, or drag the file onto the page. The viewer remembers the file for this project and **live-reloads** it so you can keep it open while Claude works. On later visits it reopens the file by itself, or after a single **Reconnect** click. |
+| **Double-click it** (other browsers) | Same picker and drag-and-drop, but a static copy: press **Open** again to refresh. |
+| **Serve the project root** | `python -m http.server` in the project root, then open `http://localhost:8000/brain/flow-viewer.html`. Loads `flow.md` with no clicks, live-reloads it, and adds **source excerpts** to the detail panel. |
+
+The dot in the header says **live** or **static**, and the reload button
+re-reads the file on demand.
+
+### Three ways to look at a flow
+
+- **Trace** (the default): the flow as numbered steps from top to bottom.
+  Each card sits in the swimlane of the layer that runs it (browser, API,
+  worker…) and steps are grouped into numbered phase bands. A card shows
+  the function, what it does, `if` / `else` and `async` tags, side-effect
+  chips (`db:`, `ext:`, `cache:`, `queue:`) and what it **passes** on.
+  Network and process hops appear as `⇄` boundary rows, and the flow's
+  final result as a **RETURN** row. A step that continues in another flow
+  shows as `↪ Flow name`; double-click it to go there.
+- **Tree**: the same flow as an indented call tree. **Expand all**,
+  **Collapse all**, **Depth 2** and **Depth 3** set how much you see; `▸`
+  folds one branch. `@ref` steps unfold the referenced flow in place, with
+  recursion detected.
+- **Graph**: a left-to-right call graph. Drag to pan, scroll to zoom,
+  double-click a box to fold its branch, **Fit** to see it all. Branch
+  conditions label the edges, and async calls get their own edge style.
+
+Layers come from the ` ```layers ` block under Overview. Without one, each
+top-level folder becomes a layer.
+
+### Reading a step
+
+Click any step, in any view, to open the detail panel:
+
+- the step's **layer**, its position (`step 4 of 12`), and any branch or
+  async tag
+- the **file path**, copied to the clipboard when clicked
+- **In plain English** (from `| plain:`), with the technical note below it
+- **If it fails** (from `| fails:`): what really happens when this step breaks
+- **Passes on** (from `| passes:`): the artefact handed to the next step
+- **Side effects**, and **Continues in** for steps that hand off to another flow
+- **Source**: an excerpt of the function with an **open file ↗** link,
+  when the viewer is served from the project root
+- **Calls / Called by** chips to explore sideways without losing your place
+  in the trace
+
+### Presentation mode
+
+Press `p` (or the toggle in the header) to swap function names for plain
+English on every card. The layout doesn't move, so you can switch in the
+middle of a walkthrough with a product manager, a designer or a new hire.
+
+### Project pages
+
+The sidebar lists every trace with its step count, the current flow's
+phases (click one to jump to it) and its layers. Above them sit three
+project-wide pages:
+
+- **Overview**: the component diagram drawn from the ` ```components `
+  block, a card for each trace (steps, phases, files, and which flows use
+  it), and the layers table. Sections outside the flow format are shown as
+  text, and an old-format `flow.md` gets a banner telling you to ask Claude
+  to *"upgrade the brain flow doc"*.
+- **Files**: the **Key files** table, plus every traced file with its layer
+  and a chip for each flow that uses it. Click a chip to jump to that step.
+- **Lint**: checks `flow.md` against the format, with line numbers. The
+  sidebar badge shows the error or warning count at a glance.
+
+| Lint level | Checks |
+|---|---|
+| **error** | legacy `[CHANGED]` / `[NEW]` tags · no `## Flow:` sections (old format) · broken `@ref` · unclosed code fence |
+| **warn** | history wording ("previously", "no longer", "was", dates…) in notes, phases, triggers or Key files · notes over 80 chars · flows over 40 lines · `plain` / `passes` / `fails` over 120 / 80 / 160 chars · Key files rows with more than 3 paths, or that read like prose · indent not a multiple of 2 · unknown or malformed `\|` lines · blocks in the wrong section · duplicate flow ids or layers · a layer with no paths · a flow with no ` ```flow ` block |
+| **info** | missing `Trigger:` line or `{#id}` · steps before the first `==` phase · empty phases · indent that skips a level · code identifiers in plain English · steps that match no layer · layers with no steps · sections outside the format |
+
+### Getting around
+
+| Key | Does |
+|---|---|
+| `←` `→` or `j` `k` | previous / next step (the `◀ ▶` buttons too) |
+| `[` `]` | previous / next phase |
+| `p` | presentation mode on / off |
+| `⌘K`, `Ctrl-K` or `/` | **Jump to**: search functions, files and plain-English descriptions across every flow |
+| `Esc` | clear the selection, or close the detail panel |
+| `Enter` | select the focused step; in the tree, `←` `→` fold and unfold |
+
+**Links are shareable.** The URL keeps the flow, step, selection and
+presentation mode, so a link drops a teammate on exactly the step you mean.
+On narrow screens the sidebar moves behind a menu button and the detail
+panel opens as a sheet.
 
 ## Repo layout
 
@@ -360,7 +426,7 @@ brain-docs/            ← the skill (copy/package this folder)
 
 ## Provenance
 
-Extracted from a real production workflow: an AI travel-planner project ran
+Extracted from a real production workflow: an AI agent project ran
 this exact system for months — hundreds of D/W/A/T entries, a 700-line
 whole-system flow doc, and a todo file that repeatedly caught deploy-blocking
 config before it bit. The formats here are what survived contact with real
