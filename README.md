@@ -1,6 +1,11 @@
 # brain-docs 🧠
 - **The brain of your project**
 
+[![Visitors](https://komarev.com/ghpvc/?username=IAbhishekJhaI&repo=brain&label=visitors&color=blueviolet&style=flat)](https://github.com/IAbhishekJhaI/brain)
+[![Latest release](https://img.shields.io/github/v/release/IAbhishekJhaI/brain?style=flat)](https://github.com/IAbhishekJhaI/brain/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/IAbhishekJhaI/brain/total?style=flat&label=.skill%20downloads)](https://github.com/IAbhishekJhaI/brain/releases)
+[![License](https://img.shields.io/github/license/IAbhishekJhaI/brain?style=flat)](LICENSE)
+
 Installation: paste this one line into Claude Code and it will do the setup for you:
 ```text
 Read https://raw.githubusercontent.com/IAbhishekJhaI/brain/main/INSTALL-WITH-CLAUDE.md and follow it.
