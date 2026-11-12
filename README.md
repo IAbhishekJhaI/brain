@@ -100,34 +100,11 @@ Read https://raw.githubusercontent.com/IAbhishekJhaI/brain/main/INSTALL-WITH-CLA
 `~/.claude/skills/` directory — on Windows, `%USERPROFILE%\.claude\skills\` —
 and Claude Code picks it up on the next session.)*
 
-### Option 2: copy the folder (Claude Code)
-Clone this repo and copy the inner `brain-docs/` folder into your skills
-directory:
-
-```bash
-# macOS / Linux
-git clone https://github.com/IAbhishekJhaI/brain.git
-cp -r brain/brain-docs ~/.claude/skills/brain-docs
-```
-
-```powershell
-# Windows (PowerShell)
-git clone https://github.com/IAbhishekJhaI/brain.git
-Copy-Item -Recurse brain\brain-docs "$env:USERPROFILE\.claude\skills\brain-docs"
-```
-
-For a single project instead of all projects, copy it to
-`<project>/.claude/skills/brain-docs`.
-
-### Option 3: just steal the idea
-The whole system is three markdown formats and one CLAUDE.md rule — no skill
-required. See **Manual setup** below.
-
 ## Setup
 
 ### With the skill (recommended)
 
-Once installed (Option 1 or 2 above), open the project you want a brain for
+Once installed, open the project you want a brain for
 and just type:
 
 > **set up a project brain for the repo**
@@ -148,39 +125,6 @@ match, and runs it. The skill will:
 loading, updating, and staying current across every future session on their
 own — no need to re-run anything.
 
-### Manual setup (no skill)
-
-The system is portable by hand in four steps:
-
-1. **Create the folder and seed the three files.** Copy the templates from
-   [`brain-docs/assets/templates/`](brain-docs/assets/templates/) into a new
-   `brain/` directory at your project root:
-
-   ```bash
-   mkdir brain
-   cp path/to/brain-docs/assets/templates/decisions.md brain/
-   cp path/to/brain-docs/assets/templates/flow.md      brain/
-   cp path/to/brain-docs/assets/templates/todo.md      brain/
-   cp path/to/brain-docs/assets/viewer/flow-viewer.html brain/
-   ```
-
-2. **Decide: ignore or commit.** Add `brain/` to your `.gitignore` if you
-   want candid, local-only notes; leave it tracked to share the memory with
-   your team. Both are valid.
-
-3. **Install the standing rule.** Paste the block from
-   [`brain-docs/assets/claude-md-snippet.md`](brain-docs/assets/claude-md-snippet.md)
-   into your project's `CLAUDE.md` (create the file if it doesn't exist).
-   **This step is what makes the system self-sustaining** — `CLAUDE.md` loads
-   every session, so Claude keeps the docs updated without being reminded.
-
-4. **Fill in `flow.md`.** The template ships with placeholders and a grammar
-   cheat-sheet; ask Claude to "trace this codebase into brain/flow.md" (or
-   write it yourself). A skeleton with no real trace has no value — this is
-   the one file that needs seeding with actual content.
-
-For what good entries look like once you're maintaining the docs, see
-[`brain-docs/references/examples.md`](brain-docs/references/examples.md).
 
 ## Use
 
