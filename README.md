@@ -43,22 +43,17 @@ Get any agent up to date on your project — its flow, its constraints, the
 1. Creates `brain/` and seeds the three files from templates
 2. Asks whether to git-ignore it (candid local notes) or commit it (team-shared memory)
 3. Installs a standing rule into your `CLAUDE.md` so the docs get updated
-   every session — even sessions where the skill itself never triggers
+   every session automatically — even sessions where the skill itself never triggers
 4. Traces your actual codebase into `flow.md` (not just a skeleton)
-5. Drops `flow-viewer.html` into `brain/`
+5. Logs every meaningful decision since setup into `decisions.md` and files to-do items
+    uncovered by your agent into `todo.md`
 
-**Maintain mode** — in a project that has `brain/`, it enforces the update
-discipline: log meaningful decisions in D/W/A/T format, re-trace changed
-execution paths (replacing them, not annotating them), tag new risks and
-check off finished todos — incrementally, before the turn ends, not in a
-batch when someone remembers to ask.
-
-**Upgrade mode** — if `brain/flow.md` was written by an older version of
+**Upgrade mode** — Trigger it with *"upgrade the brain flow doc"* .
+if `brain/flow.md` was written by an older version of
 the skill (`[CHANGED]` tags, history mixed into the call trees), it re-traces
 the code into the current format, moves any rationale it finds into
 `decisions.md` and caveats into `todo.md`, and keeps the old file as
-`flow.old.md` until you delete it. Trigger it with *"upgrade the brain flow
-doc"*.
+`flow.old.md` until you delete it.
 
 **Team mode** — for a repo where 10-15 people commit and a few of them use
 the brain. Decisions become one file each (so brain users never collide),
