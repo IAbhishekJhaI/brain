@@ -93,7 +93,19 @@ Every meaningful decision gets four lines:
 
 ## Install
 
-### Option 1: `.skill` file (recommended)
+### Option 0: let Claude Code install it (easiest)
+Open [`INSTALL-WITH-CLAUDE.md`](INSTALL-WITH-CLAUDE.md), copy the whole file,
+and paste it into Claude Code. Claude downloads the skill, installs it for
+all projects or just this one, checks the install, and offers to set up a
+brain for the project you have open.
+
+Or paste this one line into Claude Code:
+
+```text
+Read https://raw.githubusercontent.com/IAbhishekJhaI/brain/main/INSTALL-WITH-CLAUDE.md and follow it.
+```
+
+### Option 1: `.skill` file
 1. Download `brain-docs.skill` from the [latest release](../../releases).
 2. In Claude, go to **Settings → Skills → Add skill** (top right) →
    **Upload skill** → select the `brain-docs.skill` you downloaded.
