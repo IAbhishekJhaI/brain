@@ -66,20 +66,6 @@ and the brain accounts for **every commit on the main branch**, including
 the ones from teammates who have never heard of it. See
 [Team mode](#team-mode) below.
 
-### Why flow.md is a snapshot, not a log
-
-Earlier versions tagged every edit `[CHANGED: <area>]` and never removed the
-tags. On a real project that produced a 1,200-line, 115 KB flow.md with 248
-tags, where every node carried its own history ("the old one was…",
-"supersedes…", "no longer reached from the UI") and the end-to-end trace
-still described a provider that had since been replaced. Nobody could read
-it, and nobody could trust it.
-
-The rule now: **flow.md describes only the code as it runs today.** Changing
-code means re-tracing the affected flow and replacing its block. History
-already has homes: `decisions.md` (the *why* and the *before*) and git.
-Budgets (≤ 80-char notes, ≤ 40-line flows) keep it
-readable, and the viewer's lint page flags anything that slips.
 
 ### The D/W/A/T format
 
